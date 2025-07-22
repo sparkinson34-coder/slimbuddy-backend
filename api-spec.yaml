@@ -1,4 +1,4 @@
-openapi: 3.0.1
+openapi: 3.1.0
 info:
   title: SlimBuddy Backend API
   description: API for logging meals, weight, exercise, measurements, updating settings and food values for SlimBuddy users.
