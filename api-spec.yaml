@@ -8,9 +8,9 @@ servers:
 
 paths:
   /api/ping:
-  operationId: ping
     get:
       summary: Ping the API
+      operationId: ping
       description: Verifies that the backend API is running.
       responses:
         '200':
