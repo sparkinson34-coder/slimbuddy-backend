@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: SlimBuddy API
+  version: 1.0.0
+servers:
+  - url: https://slimbuddy-backend-production.up.railway.app
+paths:
+  /api/log_meal:
+    post:
+      summary: Log a user's meal
+      operationId: logMeal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                meal_description:
+                  type: string
+                syns:
+                  type: number
+                meal_type:
+                  type: string
+                healthy_extra_a_used:
+                  type: boolean
+                healthy_extra_b_used:
+                  type: boolean
+                notes:
+                  type: string
+                date:
+                  type: string
+      responses:
+        '200':
+          description: Meal logged successfully
