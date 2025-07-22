@@ -3,7 +3,11 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-router.patch('/', secureRoute, async (req, res) => {
+// 🔒 REMOVE THIS LINE BEFORE GOING LIVE — SECURITY DISABLED FOR TESTING ONLY
+router.patch('/', async (req, res) => {
+
+// 🔒Enable this command to enable security when we go live by deleting everything before the: router.patch('/', secureRoute, async (req, res) => {
+
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body.' });
   }
