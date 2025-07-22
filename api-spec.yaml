@@ -1,13 +1,23 @@
-openapi: 3.1.0
+openapi: 3.0.1
 info:
-  title: SlimBuddy API
-  version: 1.0.0
+  title: SlimBuddy Backend API
+  description: API for logging meals, weight, exercise, measurements, updating settings and food values for SlimBuddy users.
+  version: 1.0.1
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
+
 paths:
+  /api/ping:
+    get:
+      summary: Ping the API
+      description: Verifies that the backend API is running.
+      responses:
+        '200':
+          description: API is alive
+
   /api/log_meal:
     post:
-      summary: Log a user's meal
+      summary: Log a meal
       operationId: logMeal
       requestBody:
         required: true
@@ -15,6 +25,7 @@ paths:
           application/json:
             schema:
               type: object
+              required: [user_id, meal_description, syns]
               properties:
                 user_id:
                   type: string
@@ -34,4 +45,160 @@ paths:
                   type: string
       responses:
         '200':
-          description: Meal logged successfully
+          description: Meal logged
+
+  /api/log_weight:
+    post:
+      summary: Log a user's weight
+      operationId: logWeight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, weight, date]
+              properties:
+                user_id:
+                  type: string
+                weight:
+                  type: number
+                date:
+                  type: string
+      responses:
+        '200':
+          description: Weight logged
+
+  /api/log_exercise:
+    post:
+      summary: Log an exercise session
+      operationId: logExercise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, exercise_description, duration]
+              properties:
+                user_id:
+                  type: string
+                exercise_description:
+                  type: string
+                duration:
+                  type: number
+                intensity:
+                  type: string
+                notes:
+                  type: string
+                date:
+                  type: string
+      responses:
+        '200':
+          description: Exercise logged
+
+  /api/log_measurements:
+    post:
+      summary: Log body measurements
+      operationId: logMeasurements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, waist]
+              properties:
+                user_id:
+                  type: string
+                waist:
+                  type: number
+                hips:
+                  type: number
+                chest:
+                  type: number
+                thighs:
+                  type: number
+                notes:
+                  type: string
+                date:
+                  type: string
+      responses:
+        '200':
+          description: Measurements logged
+
+  /api/user_goals:
+    post:
+      summary: Set or update user goals
+      operationId: userGoals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, target_weight]
+              properties:
+                user_id:
+                  type: string
+                target_weight:
+                  type: number
+                weekly_loss_goal:
+                  type: number
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: User goals updated
+
+  /api/update_user_settings:
+    patch:
+      summary: Update user settings
+      operationId: updateUserSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+                daily_syn_allowance:
+                  type: number
+                preferred_units:
+                  type: string
+                timezone:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: User settings updated
+
+  /api/update_food_value:
+    post:
+      summary: Add or override food Syn value
+      operationId: updateFoodValue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, food_name, syn_value]
+              properties:
+                user_id:
+                  type: string
+                food_name:
+                  type: string
+                syn_value:
+                  type: number
+                is_healthy_extra_b:
+                  type: boolean
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Food value override saved
