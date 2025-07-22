@@ -3,7 +3,11 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-router.post('/', secureRoute, async (req, res) => {
+// This line is just for testing purposes and should be deleted and the following line enabled when we go live. 
+router.post('/', async (req, res) => {
+
+// This needs to be enabled when we go live so delete everything before the: router.post('/', secureRoute, async (req, res) => {
+
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body.' });
   }
