@@ -10,23 +10,27 @@ paths:
   /api/ping:
     get:
       summary: Ping the API
-      operationId: ping
       description: Verifies that the backend API is running.
+      operationId: ping
       responses:
-        '200':
+        "200":
           description: API is alive
-
   /api/log_meal:
     post:
       summary: Log a meal
       operationId: logMeal
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, meal_description, syns]
+              required:
+                - user_id
+                - meal_description
+                - syns
               properties:
                 user_id:
                   type: string
@@ -45,20 +49,24 @@ paths:
                 date:
                   type: string
       responses:
-        '200':
+        "200":
           description: Meal logged
-
   /api/log_weight:
     post:
       summary: Log a user's weight
       operationId: logWeight
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, weight, date]
+              required:
+                - user_id
+                - weight
+                - date
               properties:
                 user_id:
                   type: string
@@ -67,128 +75,153 @@ paths:
                 date:
                   type: string
       responses:
-        '200':
+        "200":
           description: Weight logged
-
   /api/log_exercise:
     post:
-      summary: Log an exercise session
+      summary: Log exercise activity
       operationId: logExercise
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, exercise_description, duration]
+              required:
+                - user_id
+                - exercise_type
+                - duration_minutes
               properties:
                 user_id:
                   type: string
-                exercise_description:
+                exercise_type:
                   type: string
-                duration:
+                duration_minutes:
                   type: number
-                intensity:
-                  type: string
                 notes:
                   type: string
                 date:
                   type: string
       responses:
-        '200':
+        "200":
           description: Exercise logged
-
   /api/log_measurements:
     post:
       summary: Log body measurements
       operationId: logMeasurements
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, waist]
+              required:
+                - user_id
+                - date
               properties:
                 user_id:
                   type: string
+                chest:
+                  type: number
                 waist:
                   type: number
                 hips:
                   type: number
-                chest:
-                  type: number
-                thighs:
-                  type: number
-                notes:
-                  type: string
                 date:
                   type: string
       responses:
-        '200':
+        "200":
           description: Measurements logged
-
   /api/user_goals:
     post:
-      summary: Set or update user goals
+      summary: Log or update user goals
       operationId: userGoals
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, target_weight]
               properties:
                 user_id:
                   type: string
                 target_weight:
                   type: number
-                weekly_loss_goal:
-                  type: number
-                notes:
+                weekly_goal:
                   type: string
+                maintenance_mode_enabled:
+                  type: boolean
       responses:
-        '200':
-          description: User goals updated
-
+        "200":
+          description: Goals updated
   /api/update_user_settings:
     patch:
       summary: Update user settings
       operationId: updateUserSettings
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id]
               properties:
                 user_id:
                   type: string
-                daily_syn_allowance:
+                preferred_name:
+                  type: string
+                goal_type:
+                  type: string
+                starting_weight:
                   type: number
-                preferred_units:
+                preferred_weight_unit:
                   type: string
-                timezone:
+                tone:
                   type: string
-                notes:
+                diet_preference:
                   type: string
+                food_allergies:
+                  type: string
+                food_dislikes:
+                  type: string
+                typical_day:
+                  type: string
+                healthy_extra_a:
+                  type: string
+                healthy_extra_b:
+                  type: string
+                syn_limit:
+                  type: number
+                target_weight:
+                  type: number
+                maintenance_mode_enabled:
+                  type: boolean
       responses:
-        '200':
+        "200":
           description: User settings updated
-
   /api/update_food_value:
     post:
-      summary: Add or override food Syn value
+      summary: Update or override a food's Syn value
       operationId: updateFoodValue
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [user_id, food_name, syn_value]
+              required:
+                - user_id
+                - food_name
+                - syn_value
               properties:
                 user_id:
                   type: string
@@ -201,5 +234,11 @@ paths:
                 notes:
                   type: string
       responses:
-        '200':
-          description: Food value override saved
+        "200":
+          description: Food value updated
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
