@@ -242,4 +242,8 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-schemas: {}
+  schemas:
+    Dummy:
+      type: object
+      description: Placeholder schema (required for OpenAI importer)
+
