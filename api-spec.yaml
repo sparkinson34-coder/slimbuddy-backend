@@ -246,4 +246,4 @@ components:
     Dummy:
       type: object
       description: Placeholder schema (required for OpenAI importer)
-
+      properties: {}
