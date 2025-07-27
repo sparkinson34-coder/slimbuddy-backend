@@ -1,16 +1,13 @@
 const express = require('express');
 const router = express.Router();
 
-// Responds to GET requests like:
-// curl.exe http://localhost:3000/api/ping
+// ✅ No authentication required for uptime checks
 router.get('/', (req, res) => {
-  res.send('OK');
-});
-
-// Responds to POST requests like:
-// curl.exe -X POST http://localhost:3000/api/ping
-router.post('/', (req, res) => {
-  res.json({ message: 'ping endpoint working!' });
+  res.status(200).json({
+    status: 'ok',
+    message: 'SlimBuddy API is alive',
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;

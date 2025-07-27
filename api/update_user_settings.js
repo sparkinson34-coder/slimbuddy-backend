@@ -3,11 +3,7 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-// 🔒 REMOVE THIS LINE BEFORE GOING LIVE — SECURITY DISABLED FOR TESTING ONLY
-router.patch('/', async (req, res) => {
-
-// 🔒Enable this command to enable security when we go live by deleting everything before the: router.patch('/', secureRoute, async (req, res) => {
-
+router.patch('/', secureRoute, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body.' });
   }
@@ -34,31 +30,36 @@ router.patch('/', async (req, res) => {
     });
   }
 
-  const { data, error } = await supabase
-    .from('user_settings')
-    .update({
-      preferred_name,
-      tone,
-      preferred_weight_unit,
-      diet_preference,
-      food_allergies,
-      food_dislikes,
-      typical_day,
-      healthy_extra_a,
-      healthy_extra_b,
-      syn_limit,
-      target_weight,
-      maintenance_mode_enabled
-    })
-    .eq('user_id', user_id);
+  // ✅ Remove undefined fields
+  const updates = {
+    preferred_name,
+    tone,
+    preferred_weight_unit,
+    diet_preference,
+    food_allergies,
+    food_dislikes,
+    typical_day,
+    healthy_extra_a,
+    healthy_extra_b,
+    syn_limit,
+    target_weight,
+    maintenance_mode_enabled
+  };
+  Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
 
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ error: error.message });
+  try {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .update(updates)
+      .eq('user_id', user_id);
+
+    if (error) throw error;
+
+    res.json({ message: 'User settings updated successfully', data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-
-  res.json({ message: 'User settings updated successfully', data });
 });
 
 module.exports = router;
-

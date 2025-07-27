@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SlimBuddy Backend API
-  description: API for logging meals, weight, exercise, measurements, updating settings and food values for SlimBuddy users.
+  description: API for logging meals, weight, exercise, measurements, updating settings, and food values for SlimBuddy users.
   version: 1.0.2
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
@@ -49,7 +49,6 @@ paths:
                   type: string
                 date:
                   type: string
-                  description: Date in YYYY-MM-DD
       responses:
         "200":
           description: Meal logged successfully
@@ -68,20 +67,28 @@ paths:
               type: object
               required:
                 - user_id
-                - weight
-                - unit
                 - date
+                - unit
               properties:
                 user_id:
                   type: string
+                  description: Unique user ID
                 weight:
                   type: number
+                  description: Weight value (used if unit = kg or lbs)
+                stones:
+                  type: number
+                  description: Stones value (optional if unit = st_lbs)
+                pounds:
+                  type: number
+                  description: Pounds value (optional if unit = st_lbs)
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
+                  description: Weight unit (kg, lbs, or st_lbs)
                 date:
                   type: string
-                  description: Date in YYYY-MM-DD
+                  description: Date in YYYY-MM-DD format
                 notes:
                   type: string
       responses:
@@ -115,7 +122,6 @@ paths:
                   type: string
                 date:
                   type: string
-                  description: Date in YYYY-MM-DD
       responses:
         "200":
           description: Exercise logged successfully
@@ -146,7 +152,6 @@ paths:
                   type: number
                 date:
                   type: string
-                  description: Date in YYYY-MM-DD
       responses:
         "200":
           description: Measurements logged successfully
@@ -176,17 +181,18 @@ paths:
                   enum: [lose, maintain]
                 target_value:
                   type: number
+                  description: Target weight value
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
                 target_date:
                   type: string
-                  description: Optional, in YYYY-MM-DD
+                  description: Target date in ISO format (YYYY-MM-DD)
       responses:
         "200":
           description: User goal logged successfully
 
-   /api/update_user_settings:
+  /api/update_user_settings:
     patch:
       summary: Update user settings
       operationId: updateUserSettings
@@ -198,17 +204,13 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - user_id
               properties:
                 user_id:
                   type: string
-                  description: The user's unique ID
                 preferred_name:
                   type: string
                 tone:
                   type: string
-                  description: User's preferred communication tone
                 preferred_weight_unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
@@ -274,5 +276,4 @@ components:
   schemas:
     Dummy:
       type: object
-      description: Placeholder schema (required for OpenAI import)
       properties: {}

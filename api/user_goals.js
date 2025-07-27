@@ -3,11 +3,7 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-// 🔒 REMOVE THIS LINE BEFORE GOING LIVE — SECURITY DISABLED FOR TESTING ONLY
-router.post('/', async (req, res) => {
-
-// 🔒Enable this command to enable security when we go live by deleting everything before the: router.post('/', secureRoute, async (req, res) => {
-
+router.post('/', secureRoute, async (req, res) => {
   if (!req.body) {
     return res.status(400).json({ error: 'Missing request body.' });
   }
@@ -15,31 +11,50 @@ router.post('/', async (req, res) => {
   const {
     user_id,
     goal_type,
-    target_value,
+    target_value, // numeric value (could be kg, lbs, or stones)
+    unit, // e.g., "kg", "lbs", "st_lbs"
     target_date
   } = req.body;
 
-  if (!user_id || !goal_type || typeof target_value !== 'number') {
+  if (!user_id || !goal_type || typeof target_value !== 'number' || !unit) {
     return res.status(400).json({
-      error: 'Missing required fields. Please include user_id, goal_type, and target_value.'
+      error: 'Missing required fields. Please include user_id, goal_type, target_value, and unit.'
     });
   }
 
-  const { data, error } = await supabase.from('user_goals').insert([
-    {
-      user_id,
-      goal_type,
-      target_value,
-      target_date
-    }
-  ]);
+  // ✅ Convert target_value to kg
+  let targetValueKg = target_value;
+  if (unit === 'lbs') {
+    targetValueKg = target_value * 0.453592;
+  } else if (unit === 'st_lbs') {
+    targetValueKg = target_value * 0.453592;
+  }
+  // If kg, no conversion needed
 
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ error: error.message });
+  // ✅ Normalize target_date if provided in DD/MM/YYYY
+  let normalizedDate = target_date;
+  if (target_date && target_date.includes('/')) {
+    const [day, month, year] = target_date.split('/');
+    normalizedDate = `${year}-${month}-${day}`;
   }
 
-  res.json({ message: 'User goal logged successfully', data });
+  try {
+    const { data, error } = await supabase.from('user_goals').insert([
+      {
+        user_id,
+        goal_type,
+        target_value: targetValueKg, // ✅ Always store in kg
+        target_date: normalizedDate || null
+      }
+    ]);
+
+    if (error) throw error;
+
+    res.json({ message: 'User goal logged successfully', data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

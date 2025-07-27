@@ -3,46 +3,29 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-// 🔒 REMOVE THIS LINE BEFORE GOING LIVE — SECURITY DISABLED FOR TESTING ONLY
-router.post('/', async (req, res) => {
+router.post('/', secureRoute, async (req, res) => {
+  const { user_id, exercise_type, duration, calories_burned, date, notes } = req.body;
 
-// 🔒Enable this command to enable security when we go live by deleting everything before the: router.post('/', secureRoute, async (req, res) => {
-
-  if (!req.body) {
-    return res.status(400).json({ error: 'Missing request body.' });
-  }
-  const {
-    user_id,
-    activity,
-    duration_minutes,
-    intensity,
-    calories_burned,
-    date,
-    notes
-  } = req.body;
-  if (!user_id || !activity || typeof duration_minutes !== 'number' || !date) {
-    return res.status(400).json({
-      error: 'Missing required fields. Please include user_id, activity, duration_minutes, and date.'
-    });
-  }
-  const { data, error } = await supabase.from('fitness_logs').insert([
-    {
-      user_id,
-      activity,
-      duration_minutes,
-      intensity,
-      calories_burned,
-      date,
-      notes
-    }
-  ]);
-
-  if (error) {
-    console.error(error);
-    return res.status(500).json({ error: error.message });
+  // ✅ Normalize date
+  let normalizedDate = date;
+  if (date && date.includes('/')) {
+    const [day, month, year] = date.split('/');
+    normalizedDate = `${year}-${month}-${day}`;
   }
 
-  res.json({ message: 'Exercise logged successfully', data });
+  if (!user_id || !exercise_type || !duration) {
+    return res.status(400).json({ error: 'Missing required fields: user_id, exercise_type, duration.' });
+  }
+
+  try {
+    const { data, error } = await supabase.from('exercise_logs').insert([
+      { user_id, exercise_type, duration, calories_burned, date: normalizedDate, notes }
+    ]);
+    if (error) throw error;
+    res.json({ message: 'Exercise logged successfully', data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
