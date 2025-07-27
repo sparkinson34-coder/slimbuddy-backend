@@ -15,6 +15,7 @@ paths:
       responses:
         "200":
           description: API is alive
+
   /api/log_meal:
     post:
       summary: Log a meal
@@ -51,41 +52,45 @@ paths:
       responses:
         "200":
           description: Meal logged
+
   /api/log_weight:
-  post:
-    summary: Log a user's weight
-    operationId: logWeight
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required:
-              - user_id
-              - weight
-              - date
-              - unit
-            properties:
-              user_id:
-                type: string
-                description: The unique ID of the user
-              weight:
-                type: number
-                description: The user's weight value
-              date:
-                type: string
-                description: The date of the log in YYYY-MM-DD format
-              unit:
-                type: string
-                enum: [kg, lbs, st_lbs]
-                description: The weight unit used (e.g., kg, lbs, st_lbs)
-              notes:
-                type: string
-                description: Optional notes about the weight entry
-    responses:
-      "200":
-        description: Weight logged successfully
+    post:
+      summary: Log a user's weight
+      operationId: logWeight
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - weight
+                - date
+                - unit
+              properties:
+                user_id:
+                  type: string
+                  description: The unique ID of the user
+                weight:
+                  type: number
+                  description: The user's weight value
+                date:
+                  type: string
+                  description: The date of the log in YYYY-MM-DD format
+                unit:
+                  type: string
+                  enum: [kg, lbs, st_lbs]
+                  description: The weight unit used
+                notes:
+                  type: string
+                  description: Optional notes about the weight entry
+      responses:
+        "200":
+          description: Weight logged successfully
+
   /api/log_exercise:
     post:
       summary: Log exercise activity
@@ -116,6 +121,7 @@ paths:
       responses:
         "200":
           description: Exercise logged
+
   /api/log_measurements:
     post:
       summary: Log body measurements
@@ -145,10 +151,13 @@ paths:
       responses:
         "200":
           description: Measurements logged
+
   /api/user_goals:
     post:
       summary: Log a user's goal
       operationId: logUserGoal
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -167,7 +176,7 @@ paths:
                 goal_type:
                   type: string
                   enum: [lose, maintain]
-                  description: The type of goal (lose or maintain weight)
+                  description: The type of goal
                 target_value:
                   type: number
                   description: Target weight value
@@ -181,6 +190,7 @@ paths:
       responses:
         "200":
           description: User goal logged successfully
+
   /api/update_user_settings:
     patch:
       summary: Update user settings
@@ -227,6 +237,7 @@ paths:
       responses:
         "200":
           description: User settings updated
+
   /api/update_food_value:
     post:
       summary: Update or override a food's Syn value
@@ -257,6 +268,7 @@ paths:
       responses:
         "200":
           description: Food value updated
+
 components:
   securitySchemes:
     BearerAuth:
@@ -266,5 +278,5 @@ components:
   schemas:
     Dummy:
       type: object
-      description: Placeholder schema (required for OpenAI importer)
+      description: Placeholder schema
       properties: {}
