@@ -52,31 +52,40 @@ paths:
         "200":
           description: Meal logged
   /api/log_weight:
-    post:
-      summary: Log a user's weight
-      operationId: logWeight
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - user_id
-                - weight
-                - date
-              properties:
-                user_id:
-                  type: string
-                weight:
-                  type: number
-                date:
-                  type: string
-      responses:
-        "200":
-          description: Weight logged
+  post:
+    summary: Log a user's weight
+    operationId: logWeight
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - user_id
+              - weight
+              - date
+              - unit
+            properties:
+              user_id:
+                type: string
+                description: The unique ID of the user
+              weight:
+                type: number
+                description: The user's weight value
+              date:
+                type: string
+                description: The date of the log in YYYY-MM-DD format
+              unit:
+                type: string
+                enum: [kg, lbs, st_lbs]
+                description: The weight unit used (e.g., kg, lbs, st_lbs)
+              notes:
+                type: string
+                description: Optional notes about the weight entry
+    responses:
+      "200":
+        description: Weight logged successfully
   /api/log_exercise:
     post:
       summary: Log exercise activity
@@ -138,28 +147,40 @@ paths:
           description: Measurements logged
   /api/user_goals:
     post:
-      summary: Log or update user goals
-      operationId: userGoals
-      security:
-        - BearerAuth: []
+      summary: Log a user's goal
+      operationId: logUserGoal
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - user_id
+                - goal_type
+                - target_value
+                - unit
               properties:
                 user_id:
                   type: string
-                target_weight:
-                  type: number
-                weekly_goal:
+                  description: The ID of the user
+                goal_type:
                   type: string
-                maintenance_mode_enabled:
-                  type: boolean
+                  enum: [lose, maintain]
+                  description: The type of goal (lose or maintain weight)
+                target_value:
+                  type: number
+                  description: Target weight value
+                unit:
+                  type: string
+                  enum: [kg, lbs, st_lbs]
+                  description: Unit of target weight
+                target_date:
+                  type: string
+                  description: Target date in ISO format (YYYY-MM-DD)
       responses:
         "200":
-          description: Goals updated
+          description: User goal logged successfully
   /api/update_user_settings:
     patch:
       summary: Update user settings
