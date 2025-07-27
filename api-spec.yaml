@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SlimBuddy Backend API
   description: API for logging meals, weight, exercise, measurements, updating settings and food values for SlimBuddy users.
-  version: 1.0.1
+  version: 1.0.2
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
@@ -49,9 +49,10 @@ paths:
                   type: string
                 date:
                   type: string
+                  description: Date in YYYY-MM-DD
       responses:
         "200":
-          description: Meal logged
+          description: Meal logged successfully
 
   /api/log_weight:
     post:
@@ -68,25 +69,21 @@ paths:
               required:
                 - user_id
                 - weight
-                - date
                 - unit
+                - date
               properties:
                 user_id:
                   type: string
-                  description: The unique ID of the user
                 weight:
                   type: number
-                  description: The user's weight value
-                date:
-                  type: string
-                  description: The date of the log in YYYY-MM-DD format
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
-                  description: The weight unit used
+                date:
+                  type: string
+                  description: Date in YYYY-MM-DD
                 notes:
                   type: string
-                  description: Optional notes about the weight entry
       responses:
         "200":
           description: Weight logged successfully
@@ -118,9 +115,10 @@ paths:
                   type: string
                 date:
                   type: string
+                  description: Date in YYYY-MM-DD
       responses:
         "200":
-          description: Exercise logged
+          description: Exercise logged successfully
 
   /api/log_measurements:
     post:
@@ -148,9 +146,10 @@ paths:
                   type: number
                 date:
                   type: string
+                  description: Date in YYYY-MM-DD
       responses:
         "200":
-          description: Measurements logged
+          description: Measurements logged successfully
 
   /api/user_goals:
     post:
@@ -172,26 +171,22 @@ paths:
               properties:
                 user_id:
                   type: string
-                  description: The ID of the user
                 goal_type:
                   type: string
                   enum: [lose, maintain]
-                  description: The type of goal
                 target_value:
                   type: number
-                  description: Target weight value
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
-                  description: Unit of target weight
                 target_date:
                   type: string
-                  description: Target date in ISO format (YYYY-MM-DD)
+                  description: Optional, in YYYY-MM-DD
       responses:
         "200":
           description: User goal logged successfully
 
-  /api/update_user_settings:
+   /api/update_user_settings:
     patch:
       summary: Update user settings
       operationId: updateUserSettings
@@ -203,19 +198,20 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - user_id
               properties:
                 user_id:
                   type: string
+                  description: The user's unique ID
                 preferred_name:
-                  type: string
-                goal_type:
-                  type: string
-                starting_weight:
-                  type: number
-                preferred_weight_unit:
                   type: string
                 tone:
                   type: string
+                  description: User's preferred communication tone
+                preferred_weight_unit:
+                  type: string
+                  enum: [kg, lbs, st_lbs]
                 diet_preference:
                   type: string
                 food_allergies:
@@ -236,7 +232,7 @@ paths:
                   type: boolean
       responses:
         "200":
-          description: User settings updated
+          description: User settings updated successfully
 
   /api/update_food_value:
     post:
@@ -267,7 +263,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: Food value updated
+          description: Food value updated successfully
 
 components:
   securitySchemes:
@@ -278,5 +274,5 @@ components:
   schemas:
     Dummy:
       type: object
-      description: Placeholder schema
+      description: Placeholder schema (required for OpenAI import)
       properties: {}
