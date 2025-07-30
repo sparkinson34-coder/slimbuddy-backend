@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SlimBuddy Backend API
-  description: API for logging meals, weight, exercise, measurements, updating settings, and food values for SlimBuddy users.
+  description: API for logging meals, weight, exercise, measurements, updating settings, food values, and retrieving progress graphs for SlimBuddy users.
   version: 1.0.2
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
@@ -51,7 +51,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: Meal logged successfully
+          description: Meal logged
 
   /api/log_weight:
     post:
@@ -67,30 +67,26 @@ paths:
               type: object
               required:
                 - user_id
+                - weight
                 - date
                 - unit
               properties:
                 user_id:
                   type: string
-                  description: Unique user ID
+                  description: The unique ID of the user
                 weight:
                   type: number
-                  description: Weight value (used if unit = kg or lbs)
-                stones:
-                  type: number
-                  description: Stones value (optional if unit = st_lbs)
-                pounds:
-                  type: number
-                  description: Pounds value (optional if unit = st_lbs)
+                  description: The user's weight in the specified unit
+                date:
+                  type: string
+                  description: The date of the log in YYYY-MM-DD format
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
-                  description: Weight unit (kg, lbs, or st_lbs)
-                date:
-                  type: string
-                  description: Date in YYYY-MM-DD format
+                  description: Unit of the weight value
                 notes:
                   type: string
+                  description: Optional notes
       responses:
         "200":
           description: Weight logged successfully
@@ -124,37 +120,54 @@ paths:
                   type: string
       responses:
         "200":
-          description: Exercise logged successfully
+          description: Exercise logged
 
-  /api/log_measurements:
-    post:
-      summary: Log body measurements
-      operationId: logMeasurements
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - user_id
-                - date
-              properties:
-                user_id:
-                  type: string
-                chest:
-                  type: number
-                waist:
-                  type: number
-                hips:
-                  type: number
-                date:
-                  type: string
-      responses:
-        "200":
-          description: Measurements logged successfully
+ /api/log_measurements:
+  post:
+    summary: Log body measurements
+    operationId: logMeasurements
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - user_id
+              - date
+            properties:
+              user_id:
+                type: string
+                description: The unique ID of the user
+              date:
+                type: string
+                description: Date of measurement (DD/MM/YYYY or YYYY-MM-DD)
+              bust:
+                type: number
+              waist:
+                type: number
+              hips:
+                type: number
+              thighs:
+                type: number
+              neck:
+                type: number
+              arm:
+                type: number
+              under_bust:
+                type: number
+              knees:
+                type: number
+              ankles:
+                type: number
+              notes:
+                type: string
+                description: Optional notes about the measurement session
+    responses:
+      "200":
+        description: Measurements logged successfully
 
   /api/user_goals:
     post:
@@ -181,13 +194,11 @@ paths:
                   enum: [lose, maintain]
                 target_value:
                   type: number
-                  description: Target weight value
                 unit:
                   type: string
                   enum: [kg, lbs, st_lbs]
                 target_date:
                   type: string
-                  description: Target date in ISO format (YYYY-MM-DD)
       responses:
         "200":
           description: User goal logged successfully
@@ -213,7 +224,6 @@ paths:
                   type: string
                 preferred_weight_unit:
                   type: string
-                  enum: [kg, lbs, st_lbs]
                 diet_preference:
                   type: string
                 food_allergies:
@@ -234,7 +244,7 @@ paths:
                   type: boolean
       responses:
         "200":
-          description: User settings updated successfully
+          description: User settings updated
 
   /api/update_food_value:
     post:
@@ -265,7 +275,23 @@ paths:
                   type: string
       responses:
         "200":
-          description: Food value updated successfully
+          description: Food value updated
+
+  /api/weight_graph:
+    get:
+      summary: Get weight progress chart URL
+      operationId: getWeightGraph
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returns a URL to the weight chart image
 
 components:
   securitySchemes:
@@ -276,4 +302,5 @@ components:
   schemas:
     Dummy:
       type: object
+      description: Placeholder schema for OpenAI importer
       properties: {}
