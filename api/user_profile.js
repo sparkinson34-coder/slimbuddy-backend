@@ -13,7 +13,10 @@ router.get('/', async (req, res) => {
     }
     const token = authHeader.split(' ')[1]; // Extract token
     console.log('Extracted Token:', token);
-
+    console.log('Supabase URL:', process.env.SUPABASE_URL);
+    console.log('Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.log('Token received:', token ? 'Yes' : 'No');
+    
     // ✅ Get user from token
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) {
