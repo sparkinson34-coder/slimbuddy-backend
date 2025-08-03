@@ -2,24 +2,31 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/supabaseClient');
 
-console.log('Incoming request to /api/user_profile');
-console.log('Token:', token);
-
-// ✅ GET user profile using JWT
 router.get('/', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Token is required' });
+    console.log('Incoming request to /api/user_profile');
 
-    // ✅ Validate token and fetch user
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // ✅ Extract Bearer token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    }
+    const token = authHeader.split(' ')[1]; // Extract token
+    console.log('Extracted Token:', token);
 
-    if (error || !user) return res.status(401).json({ error: error?.message || 'Invalid token' });
+    // ✅ Get user from token
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) {
+      console.error('Supabase getUser error:', error);
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
 
-    res.json({ user_id: user.id });
+    console.log('Fetched User Profile:', data.user);
+    return res.json({ user: data.user });
+
   } catch (err) {
-    console.error('Error in /api/user_profile:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error in /api/user_profile:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
