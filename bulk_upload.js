@@ -94,7 +94,7 @@ async function uploadWeights() {
     const weightKg = convertToKg(entry.weight);
     const normalizedDate = entry.date.split('-').reverse().join('-');
     const payload = {
-      user_id: USER_ID,
+      user_id: process.env.USER_ID,  // ✅ Make sure this matches Supabase
       weight: parseFloat(weightKg),
       unit: 'kg',
       date: normalizedDate,
