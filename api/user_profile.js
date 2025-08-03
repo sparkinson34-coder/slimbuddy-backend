@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/supabaseClient');
 
+console.log('Incoming request to /api/user_profile');
+console.log('Token:', token);
+
 // ✅ GET user profile using JWT
 router.get('/', async (req, res) => {
   try {
