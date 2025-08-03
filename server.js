@@ -20,6 +20,7 @@ app.use('/api/user_goals', require('./api/user_goals'));
 app.use('/api/update_user_settings', require('./api/update_user_settings'));
 app.use('/api/update_food_value', require('./api/update_food_value'));
 app.use('/api/ping', require('./api/ping'));
+app.use('/api/user_profile', require('./api/user_profile'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

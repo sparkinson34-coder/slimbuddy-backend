@@ -293,6 +293,25 @@ paths:
         "200":
           description: Returns a URL to the weight chart image
 
+/user_profile:
+  get:
+    summary: Get user profile using JWT
+    description: Returns the authenticated user's ID based on the JWT token provided in the Authorization header.
+    operationId: getUserProfile
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Successful response
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  example: "45089e78-5652-4f62-8d8f-dfd8e2d31330"
+
 components:
   securitySchemes:
     BearerAuth:

@@ -10,22 +10,18 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-let detectedUserId = null; // ✅ This will store the correct user_id from SlimBuddy DB
-
-// ✅ 1. Fetch User Profile to Auto-Detect user_id
-async function getUserProfile() {
-  console.log('🔍 Fetching user profile using JWT...');
+// ✅ Function to fetch user_id from /user_profile
+async function getUserId() {
   try {
-    const response = await axios.get(`${API_BASE}/user_profile`, { headers: HEADERS });
-    detectedUserId = response.data.user_id;
-    console.log(`✅ User ID detected: ${detectedUserId}`);
+    const res = await axios.get(`${API_BASE}/user_profile`, { headers: HEADERS });
+    return res.data.user_id;
   } catch (err) {
     console.error('❌ Failed to fetch user profile:', err.response?.data || err.message);
-    process.exit(1); // Stop script if user_id not found
+    process.exit(1);
   }
 }
 
-// ✅ 2. Convert Stones & Pounds → kg
+// ✅ Convert Stones & Pounds → kg
 function convertToKg(weightStr) {
   weightStr = weightStr.toLowerCase();
   if (weightStr.includes('st')) {
@@ -43,26 +39,67 @@ function convertToKg(weightStr) {
   return parseFloat(weightStr); // Assume already in kg
 }
 
-// ✅ 3. Convert inches → cm
+// ✅ Convert inches → cm
 function inchesToCm(value) {
   return value ? (parseFloat(value) * 2.54).toFixed(1) : null;
 }
 
-// ✅ 4. Bulk Weights (Add as many as you like)
+// ✅ Bulk Weights (Add as many as you like)
 const weightEntries = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
-  { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
-  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" }
-  // ... rest of your data
+  { date: "11-09-2024", weight: "17 st 0 lbs", notes: " " },
+  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
+  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: " " },
+  { date: "02-10-2024", weight: "16 st 6 lbs", notes: " " },
+  { date: "18-10-2024", weight: "16 st 1.5 lbs", notes: "1 1/2 Stone Award" },
+  { date: "24-10-2024", weight: "16 st 0 lbs", notes: " " },
+  { date: "30-10-2024", weight: "15 st 12 lbs", notes: "2 Stone Award" },
+  { date: "06-11-2024", weight: "15 st 11.5 lbs", notes: " " },
+  { date: "22-11-2024", weight: "15 st 5 lbs", notes: "2 1/2 Stone Award" },
+  { date: "27-11-2024", weight: "15 st 5 lbs", notes: " " },
+  { date: "04-12-2024", weight: "15 st 3 lbs", notes: " " },
+  { date: "13-12-2024", weight: "15 st 2 lbs", notes: " " },
+  { date: "18-12-2024", weight: "15 st 2 lbs", notes: " " },
+  { date: "24-12-2024", weight: "14 st 13 lbs", notes: " " },
+  { date: "31-12-2024", weight: "14 st 13 lbs", notes: " " },
+  { date: "07-01-2025", weight: "14 st 11 lbs", notes: "3 Stone Award" },
+  { date: "14-01-2025", weight: "14 st 10.5 lbs", notes: " " },
+  { date: "21-01-2025", weight: "14 st 10 lbs", notes: " " },
+  { date: "28-01-2025", weight: "14 st 8.5 lbs", notes: " " },
+  { date: "04-02-2025", weight: "14 st 7.5 lbs", notes: " " },
+  { date: "14-02-2025", weight: "14 st 6 lbs", notes: " " },
+  { date: "19-02-2025", weight: "14 st 6.5 lbs", notes: " " },
+  { date: "25-02-2025", weight: "14 st 3.5 lbs", notes: "3 1/2 Stone Award" },
+  { date: "05-03-2025", weight: "14 st 3.5 lbs", notes: " " },
+  { date: "12-03-2025", weight: "14 st 4 lbs", notes: " " },
+  { date: "21-03-2025", weight: "14 st 1 lbs", notes: " " },
+  { date: "09-04-2025", weight: "13 st 13 lbs", notes: " " },
+  { date: "18-04-2025", weight: "13 st 12 lbs", notes: "4 Stone Award" },
+  { date: "25-04-2025", weight: "13 st 12 lbs", notes: " " },
+  { date: "02-05-2025", weight: "13 st 11.5 lbs", notes: " " },
+  { date: "09-05-2025", weight: "13 st 11.5 lbs", notes: " " },
+  { date: "16-05-2025", weight: "13 st 10 lbs", notes: " " },
+  { date: "23-05-2025", weight: "13 st 9.5 lbs", notes: " " },
+  { date: "30-05-2025", weight: "13 st 9 lbs", notes: " " },
+  { date: "07-06-2025", weight: "13 st 8 lbs", notes: " " },
+  { date: "14-06-2025", weight: "13 st 9.5 lbs", notes: " " },
+  { date: "21-06-2025", weight: "13 st 5.5 lbs", notes: "4 1/2 Stone Award" },
+  { date: "28-06-2025", weight: "13 st 4.5 lbs", notes: " " },
+  { date: "05-07-2025", weight: "13 st 2.5 lbs", notes: " " },
+  { date: "12-07-2025", weight: "13 st 1 lbs", notes: " " },
+  { date: "19-07-2025", weight: "13 st 0 lbs", notes: " " },
+  { date: "26-07-2025", weight: "12 st 11.5 lbs", notes: "5 Stone Award" }
 ];
 
-// ✅ 5. Bulk Measurements
+// ✅ Bulk Measurements
 const measurementEntries = [
-  { date:"30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss!" }
-  // ... rest of your data
+  { date:"30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
+  { date:"10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
+  { date:"25/04/2025", bust: 42, waist: 35, hips: 46, neck: 14.5, arm: 14, under_bust: 36, thighs: 43.5, knee: 18, ankles: 10.5, notes: "Got in to Size 14 Jeans!" },
+  { date:"05/07/2025", bust: 41, waist: 33, hips: 44, neck: 14, arm: 13, under_bust: 35, thighs: 41, knee: 17.5, ankles: 10.5, notes: "Had to take Size 14 jeans & shorts in at the waist" },
 ];
 
-// ✅ 6. Upload Weights
+// ✅ Upload Weights
 async function uploadWeights() {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
@@ -85,7 +122,7 @@ async function uploadWeights() {
   }
 }
 
-// ✅ 7. Upload Measurements
+// ✅ Upload Measurements
 async function uploadMeasurements() {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
@@ -114,10 +151,10 @@ async function uploadMeasurements() {
   }
 }
 
-// ✅ 8. Main Execution
+// ✅ Main Execution
 (async () => {
-  await getUserProfile(); // Fetch user_id dynamically
-  await uploadWeights();
-  await uploadMeasurements();
+  const userId = await getUserId();
+  await uploadWeights(userId);
+  await uploadMeasurements(userId);
   console.log('\n🎉 All bulk uploads complete!');
 })();
