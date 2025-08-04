@@ -1,4 +1,6 @@
-// ✅ Load environment variables
+/**
+ * ✅ 1. Load Environment Variables
+ */
 require('dotenv').config();
 const axios = require('axios');
 
@@ -10,18 +12,33 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// ✅ Function to fetch user_id from /user_profile
-async function getUserId() {
+let detectedUserId = null; // ✅ Will store user_id dynamically
+
+/**
+ * ✅ 2. Fetch User Profile to Get user_id
+ */
+async function fetchUserProfile() {
+  console.log('🔍 Fetching user profile using JWT...');
   try {
-    const res = await axios.get(`${API_BASE}/user_profile`, { headers: HEADERS });
-    return res.data.user_id;
+    const res = await axios.get(`${API_BASE}/user_profile`, {
+      headers: HEADERS,
+    });
+
+    if (res.data && res.data.user_id) {
+      detectedUserId = res.data.user_id;
+      console.log(`✅ User ID detected: ${detectedUserId}`);
+    } else {
+      throw new Error('User ID not found in response');
+    }
   } catch (err) {
     console.error('❌ Failed to fetch user profile:', err.response?.data || err.message);
-    process.exit(1);
+    process.exit(1); // Stop the script if we can't get user_id
   }
 }
 
-// ✅ Convert Stones & Pounds → kg
+/**
+ * ✅ 3. Convert Stones & Pounds → kg
+ */
 function convertToKg(weightStr) {
   weightStr = weightStr.toLowerCase();
   if (weightStr.includes('st')) {
@@ -36,15 +53,19 @@ function convertToKg(weightStr) {
     const lbs = parseFloat(weightStr);
     return (lbs * 0.453592).toFixed(2);
   }
-  return parseFloat(weightStr); // Assume already in kg
+  return parseFloat(weightStr);
 }
 
-// ✅ Convert inches → cm
+/**
+ * ✅ 4. Convert Inches → cm
+ */
 function inchesToCm(value) {
   return value ? (parseFloat(value) * 2.54).toFixed(1) : null;
 }
 
-// ✅ Bulk Weights (Add as many as you like)
+/**
+ * ✅ 5. Bulk Weight Entries
+ */
 const weightEntries = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
   { date: "11-09-2024", weight: "17 st 0 lbs", notes: " " },
@@ -91,7 +112,9 @@ const weightEntries = [
   { date: "26-07-2025", weight: "12 st 11.5 lbs", notes: "5 Stone Award" }
 ];
 
-// ✅ Bulk Measurements
+/**
+ * ✅ 6. Bulk Measurement Entries
+ */
 const measurementEntries = [
   { date:"30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
   { date:"10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
@@ -99,14 +122,16 @@ const measurementEntries = [
   { date:"05/07/2025", bust: 41, waist: 33, hips: 44, neck: 14, arm: 13, under_bust: 35, thighs: 41, knee: 17.5, ankles: 10.5, notes: "Had to take Size 14 jeans & shorts in at the waist" },
 ];
 
-// ✅ Upload Weights
+/**
+ * ✅ 7. Upload Weights
+ */
 async function uploadWeights() {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
     const weightKg = convertToKg(entry.weight);
     const normalizedDate = entry.date.split('-').reverse().join('-');
     const payload = {
-      user_id: detectedUserId, // ✅ Now uses auto-detected ID
+      user_id: detectedUserId, // ✅ Uses auto-detected user_id
       weight: parseFloat(weightKg),
       unit: 'kg',
       date: normalizedDate,
@@ -122,7 +147,9 @@ async function uploadWeights() {
   }
 }
 
-// ✅ Upload Measurements
+/**
+ * ✅ 8. Upload Measurements
+ */
 async function uploadMeasurements() {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
@@ -151,10 +178,12 @@ async function uploadMeasurements() {
   }
 }
 
-// ✅ Main Execution
+/**
+ * ✅ 9. Run All Steps
+ */
 (async () => {
-  const userId = await getUserId();
-  await uploadWeights(userId);
-  await uploadMeasurements(userId);
+  await fetchUserProfile(); // ✅ First, get user_id using token
+  await uploadWeights();
+  await uploadMeasurements();
   console.log('\n🎉 All bulk uploads complete!');
 })();
