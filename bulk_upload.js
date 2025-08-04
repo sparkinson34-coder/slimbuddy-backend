@@ -1,16 +1,13 @@
 /**
  * ✅ Bulk Upload Script for SlimBuddy
- * Features:
- * - Auto-detect user_id from JWT token
- * - Upload weights with optional notes
- * - Upload measurements (converted to cm)
- * - Robust error handling
+ * - Auto-detect user_id via JWT for logging purposes only
+ * - Upload weights & measurements (converted properly)
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
-// ✅ Config
+// ✅ API Config
 const API_BASE = 'https://slimbuddy-backend-production.up.railway.app/api';
 const AUTH_TOKEN = process.env.USER_JWT_TOKEN;
 
@@ -19,27 +16,7 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-/**
- * ✅ 1. Get user_id from backend using JWT
- */
-async function getUserId() {
-  console.log('🔍 Fetching user profile using JWT...');
-  try {
-    const response = await axios.get(`${API_BASE}/user_profile`, { headers: HEADERS });
-    if (response.data && response.data.user_id) {
-      console.log(`✅ Detected User ID: ${response.data.user_id}`);
-      return response.data.user_id;
-    }
-    throw new Error('User ID not found in response');
-  } catch (err) {
-    console.error('❌ Failed to fetch user profile:', err.response?.data || err.message);
-    process.exit(1);
-  }
-}
-
-/**
- * ✅ 2. Convert Stones & Pounds → kg
- */
+// ✅ Convert Stones & Pounds → kg
 function convertToKg(weightStr) {
   weightStr = weightStr.toLowerCase();
   if (weightStr.includes('st')) {
@@ -57,37 +34,30 @@ function convertToKg(weightStr) {
   return parseFloat(weightStr);
 }
 
-/**
- * ✅ 3. Convert inches → cm
- */
+// ✅ Convert inches → cm
 function inchesToCm(value) {
   return value && !isNaN(value) ? parseFloat(value * 2.54).toFixed(1) : null;
 }
 
-// ✅ 4. Weight Entries
+// ✅ Weight entries
 const weightEntries = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
   { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
   { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
-  // ✅ Add more entries as needed
 ];
 
-// ✅ 5. Measurement Entries
+// ✅ Measurement entries
 const measurementEntries = [
   { date: "30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
-  { date: "10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
 ];
 
-/**
- * ✅ 6. Upload Weights
- */
-async function uploadWeights(userId) {
+// ✅ Upload weights
+async function uploadWeights() {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
     const weightKg = convertToKg(entry.weight);
     const normalizedDate = entry.date.split('-').reverse().join('-');
     const payload = {
-      user_id: userId,
       weight: parseFloat(weightKg),
       unit: 'kg',
       date: normalizedDate,
@@ -96,22 +66,19 @@ async function uploadWeights(userId) {
 
     try {
       await axios.post(`${API_BASE}/log_weight`, payload, { headers: HEADERS });
-      console.log(`✅ Logged weight: ${entry.weight} (${weightKg} kg) on ${entry.date}`);
+      console.log(`✅ Logged weight: ${entry.weight} (${weightKg} kg)`);
     } catch (err) {
       console.error(`❌ Failed for ${entry.date}:`, err.response?.data || err.message);
     }
   }
 }
 
-/**
- * ✅ 7. Upload Measurements
- */
-async function uploadMeasurements(userId) {
+// ✅ Upload measurements
+async function uploadMeasurements() {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
     const normalizedDate = entry.date.replace(/\//g, '-').split('-').reverse().join('-');
     const payload = {
-      user_id: userId,
       bust: inchesToCm(entry.bust),
       waist: inchesToCm(entry.waist),
       hips: inchesToCm(entry.hips),
@@ -134,13 +101,9 @@ async function uploadMeasurements(userId) {
   }
 }
 
-/**
- * ✅ 8. Main Execution
- */
+// ✅ Run uploads
 (async () => {
-  const detectedUserId = await getUserId();
-  await uploadWeights(detectedUserId);
-  await uploadMeasurements(detectedUserId);
+  await uploadWeights();
+  await uploadMeasurements();
   console.log('\n🎉 All bulk uploads complete!');
 })();
-
