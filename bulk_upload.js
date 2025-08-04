@@ -1,15 +1,15 @@
 /**
  * ✅ Bulk Upload Script for SlimBuddy
  * Features:
- * - Auto-detect user_id from JWT token
- * - Upload weights (with date format fixed)
- * - Upload measurements (with better error reporting)
+ * - Auto-detect user_id from JWT
+ * - Normalize all dates to YYYY-MM-DD
+ * - Convert weight & measurements to correct units
+ * - Log successes and detailed errors
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
-// ✅ Config
 const API_BASE = 'https://slimbuddy-backend-production.up.railway.app/api';
 const AUTH_TOKEN = process.env.USER_JWT_TOKEN;
 
@@ -18,7 +18,9 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// ✅ 1. Detect User ID from /user_profile
+/**
+ * ✅ 1. Detect User ID from JWT
+ */
 async function getUserId() {
   console.log('🔍 Fetching user profile using JWT...');
   try {
@@ -62,41 +64,45 @@ function inchesToCm(value) {
 }
 
 /**
- * ✅ 4. Format date to YYYY-MM-DD
+ * ✅ 4. Normalize date → YYYY-MM-DD
  */
-function formatDate(inputDate) {
-  if (inputDate.includes('/')) {
-    const [day, month, year] = inputDate.split('/');
+function normalizeDate(dateStr) {
+  if (!dateStr) return null;
+  if (dateStr.includes('/')) {
+    const [day, month, year] = dateStr.split('/');
     return `${year}-${month}-${day}`;
   }
-  if (inputDate.includes('-')) {
-    const [day, month, year] = inputDate.split('-');
+  if (dateStr.includes('-')) {
+    const [day, month, year] = dateStr.split('-');
     return `${year}-${month}-${day}`;
   }
-  return inputDate;
+  return dateStr; // Assume already normalized
 }
 
-// ✅ 5. Bulk Weight Entries
+// ✅ Bulk weight entries
 const weightEntries = [
-  { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
-  { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
-  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
-  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: "" },
-  { date: "02-10-2024", weight: "16 st 6 lbs", notes: "" },
+  { date: '04-09-2024', weight: '17 st 4.5 lbs', notes: '1/2 Stone Award' },
+  { date: '11-09-2024', weight: '17 st 0 lbs', notes: '' },
+  { date: '18-09-2024', weight: '16 st 11.5 lbs', notes: '1 Stone Award' },
+  { date: '25-09-2024', weight: '16 st 7.5 lbs', notes: '' },
+  { date: '02-10-2024', weight: '16 st 6 lbs', notes: '' },
 ];
 
-// ✅ 6. Bulk Measurement Entries
+// ✅ Bulk measurement entries
 const measurementEntries = [
-  { date: "30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
-  { date: "10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
+  { date: '30/10/2024', bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knees: 18.5, ankles: 11, notes: 'Great inch loss this time!' },
+  { date: '10/01/2025', bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knees: 18.5, ankles: 11, notes: 'Bought new bras this week!' },
 ];
 
-// ✅ 7. Upload Weights
+/**
+ * ✅ 5. Upload weights
+ */
 async function uploadWeights(userId) {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
     const weightKg = convertToKg(entry.weight);
-    const normalizedDate = formatDate(entry.date);
+    const normalizedDate = normalizeDate(entry.date);
+    console.log(`➡ Preparing weight entry for ${entry.date} → ${normalizedDate}`);
 
     const payload = {
       user_id: userId,
@@ -115,11 +121,14 @@ async function uploadWeights(userId) {
   }
 }
 
-// ✅ 8. Upload Measurements
+/**
+ * ✅ 6. Upload measurements
+ */
 async function uploadMeasurements(userId) {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
-    const normalizedDate = formatDate(entry.date);
+    const normalizedDate = normalizeDate(entry.date);
+    console.log(`➡ Preparing measurement entry for ${entry.date} → ${normalizedDate}`);
 
     const payload = {
       user_id: userId,
@@ -130,7 +139,7 @@ async function uploadMeasurements(userId) {
       arm: inchesToCm(entry.arm),
       under_bust: inchesToCm(entry.under_bust),
       thighs: inchesToCm(entry.thighs),
-      knee: inchesToCm(entry.knee),
+      knees: inchesToCm(entry.knees),
       ankles: inchesToCm(entry.ankles),
       notes: entry.notes || '',
       date: normalizedDate,
@@ -145,7 +154,7 @@ async function uploadMeasurements(userId) {
   }
 }
 
-// ✅ 9. Main Execution
+// ✅ 7. Main
 (async () => {
   const detectedUserId = await getUserId();
   await uploadWeights(detectedUserId);
