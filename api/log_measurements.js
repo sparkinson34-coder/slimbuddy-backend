@@ -36,6 +36,8 @@ router.post('/', secureRoute, async (req, res) => {
     normalizedDate = `${year}-${month}-${day}`;
   }
 
+  console.log('Incoming measurement payload:', req.body);
+
   try {
     const { data, error } = await supabase.from('body_measurements').insert([
       {
