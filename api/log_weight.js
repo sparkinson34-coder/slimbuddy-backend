@@ -1,6 +1,8 @@
 /**
- * ✅ log_weight.js
- * Handles POST requests to log weight for authenticated users.
+ * ✅ Weight Logging API
+ * - Accepts weight, date, notes
+ * - Converts units to kg
+ * - Uses user_id from JWT, NOT the request body
  */
 
 const express = require('express');
@@ -8,55 +10,44 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const secureRoute = require('../lib/authMiddleware');
 
-// ✅ Initialize Supabase Client with Service Role Key
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// ✅ Initialize Supabase
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// ✅ Route to log weight
 router.post('/', secureRoute, async (req, res) => {
+  const { weight, date, unit, notes } = req.body;
+  const user_id = req.user.sub || req.user.id; // ✅ Extracted from JWT payload
+
+  // Validate fields
+  if (!weight || !unit || !date) {
+    return res.status(400).json({ error: 'Missing required fields: weight, unit, date.' });
+  }
+
+  // ✅ Normalize date (DD-MM-YYYY → YYYY-MM-DD)
+  let normalizedDate = date;
+  if (date.includes('/')) {
+    const [day, month, year] = date.split('/');
+    normalizedDate = `${year}-${month}-${day}`;
+  } else if (date.includes('-')) {
+    const [day, month, year] = date.split('-');
+    normalizedDate = `${year}-${month}-${day}`;
+  }
+
+  // ✅ Convert to kg
+  let weightInKg = weight;
+  if (unit === 'lbs') weightInKg = weight * 0.453592;
+  if (unit === 'st_lbs') weightInKg = weight * 0.453592;
+
   try {
-    const { user_id, weight, date, unit, notes } = req.body;
-
-    // ✅ Validate fields
-    if (!user_id || !weight || !unit || !date) {
-      return res.status(400).json({
-        error: 'Missing required fields: user_id, weight, unit, date',
-      });
-    }
-
-    // ✅ Normalize date
-    let normalizedDate = date;
-    if (date.includes('/')) {
-      const [day, month, year] = date.split('/');
-      normalizedDate = `${year}-${month}-${day}`;
-    }
-
-    // ✅ Convert weight to KG if needed
-    let weightInKg = weight;
-    if (unit === 'lbs') {
-      weightInKg = weight * 0.453592;
-    }
-
-    // ✅ Insert into Supabase
-    const { data, error } = await supabase.from('weight_logs').insert([
-      {
-        user_id,
-        weight: weightInKg,
-        unit: 'kg',
-        date: normalizedDate,
-        notes: notes || '',
-      },
-    ]);
+    const { data, error } = await supabase
+      .from('weight_logs')
+      .insert([{ user_id, weight: weightInKg, unit: 'kg', date: normalizedDate, notes }]);
 
     if (error) throw error;
-    res.json({ message: '✅ Weight logged successfully!', data });
+
+    res.json({ message: 'Weight logged successfully', data });
   } catch (err) {
-    console.error('❌ Error in log_weight:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 module.exports = router;
-

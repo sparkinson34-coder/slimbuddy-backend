@@ -143,3 +143,4 @@ async function uploadMeasurements(userId) {
   await uploadMeasurements(detectedUserId);
   console.log('\n🎉 All bulk uploads complete!');
 })();
+
