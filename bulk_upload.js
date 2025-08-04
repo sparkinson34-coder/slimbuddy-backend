@@ -19,7 +19,9 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// ✅ 1. Detect User ID from /user_profile API
+/**
+ * ✅ 1. Get user_id from backend using JWT
+ */
 async function getUserId() {
   console.log('🔍 Fetching user profile using JWT...');
   try {
@@ -52,7 +54,7 @@ function convertToKg(weightStr) {
     const lbs = parseFloat(weightStr);
     return (lbs * 0.453592).toFixed(2);
   }
-  return parseFloat(weightStr); // Assume already in kg
+  return parseFloat(weightStr);
 }
 
 /**
@@ -62,28 +64,28 @@ function inchesToCm(value) {
   return value && !isNaN(value) ? parseFloat(value * 2.54).toFixed(1) : null;
 }
 
-// ✅ 4. Bulk Weights Array
+// ✅ 4. Weight Entries
 const weightEntries = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
   { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
   { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
-  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: "" },
-  { date: "02-10-2024", weight: "16 st 6 lbs", notes: "" },
   // ✅ Add more entries as needed
 ];
 
-// ✅ 5. Bulk Measurements Array
+// ✅ 5. Measurement Entries
 const measurementEntries = [
   { date: "30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
   { date: "10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
 ];
 
-// ✅ 6. Upload Weights
+/**
+ * ✅ 6. Upload Weights
+ */
 async function uploadWeights(userId) {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
     const weightKg = convertToKg(entry.weight);
-    const normalizedDate = entry.date.split('-').reverse().join('-'); // DD-MM-YYYY → YYYY-MM-DD
+    const normalizedDate = entry.date.split('-').reverse().join('-');
     const payload = {
       user_id: userId,
       weight: parseFloat(weightKg),
@@ -101,11 +103,13 @@ async function uploadWeights(userId) {
   }
 }
 
-// ✅ 7. Upload Measurements
+/**
+ * ✅ 7. Upload Measurements
+ */
 async function uploadMeasurements(userId) {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
-    const normalizedDate = entry.date.replace(/\//g, '-').split('-').reverse().join('-'); // DD/MM/YYYY → YYYY-MM-DD
+    const normalizedDate = entry.date.replace(/\//g, '-').split('-').reverse().join('-');
     const payload = {
       user_id: userId,
       bust: inchesToCm(entry.bust),
@@ -130,7 +134,9 @@ async function uploadMeasurements(userId) {
   }
 }
 
-// ✅ 8. Main Function
+/**
+ * ✅ 8. Main Execution
+ */
 (async () => {
   const detectedUserId = await getUserId();
   await uploadWeights(detectedUserId);
