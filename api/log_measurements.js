@@ -17,7 +17,7 @@ router.post('/', secureRoute, async (req, res) => {
     return res.status(400).json({ error: 'Date is required' });
   }
 
-  const normalizedDate = date.replace(/\//g, '-').split('-').reverse().join('-');
+const normalizedDate = normalizeDate(date);
 
   try {
     const { data, error } = await supabase.from('body_measurements').insert([

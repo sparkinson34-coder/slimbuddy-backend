@@ -40,10 +40,15 @@ async function getUserId() {
  */
 function normalizeDate(dateStr) {
   if (!dateStr) return null;
-  let clean = dateStr.replace(/\//g, '-'); // Replace "/" with "-"
+  const clean = dateStr.replace(/\//g, '-'); // Replace slashes with hyphens
   const parts = clean.split('-');
   if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
+    let [dd, mm, yyyy] = parts;
+    // Handle if input is YYYY-MM-DD already
+    if (yyyy.length === 4) {
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    // Handle DD-MM-YYYY
     return `${yyyy}-${mm}-${dd}`;
   }
   return null;
