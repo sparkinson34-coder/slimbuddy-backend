@@ -36,18 +36,18 @@ async function getUserId() {
 }
 
 /**
- * ✅ 2. Format Date → YYYY-MM-DD
+ * ✅ 2. Convert date to YYYY-MM-DD for Postgres
  */
 function formatDate(dateStr) {
   if (dateStr.includes('-')) {
-    const [day, month, year] = dateStr.split('-');
-    return `${year}-${month}-${day}`;
+    const [day, month, year] = dateStr.split('-'); // e.g., "18-09-2024"
+    return `${year}-${month}-${day}`; // ✅ 2024-09-18
   }
   if (dateStr.includes('/')) {
-    const [day, month, year] = dateStr.split('/');
-    return `${year}-${month}-${day}`;
+    const [day, month, year] = dateStr.split('/'); // e.g., "30/10/2024"
+    return `${year}-${month}-${day}`; // ✅ 2024-10-30
   }
-  return dateStr; // fallback
+  return dateStr;
 }
 
 /**
