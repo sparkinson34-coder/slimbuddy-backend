@@ -1,16 +1,17 @@
 /**
- * ✅ SlimBuddy Bulk Upload Script
+ * ✅ SlimBuddy Bulk Upload Script (Final Version)
  * Features:
- * - Auto-detect user_id from JWT
- * - Normalize all dates to YYYY-MM-DD
- * - Validate and log skipped invalid dates
- * - Upload weights and measurements
+ *  - Auto-detect user_id from JWT
+ *  - Normalizes date formats to YYYY-MM-DD
+ *  - Converts Stones & Pounds → kg
+ *  - Converts inches → cm
+ *  - Detailed logging for debugging
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
-// ✅ Config
+// ✅ API Config
 const API_BASE = 'https://slimbuddy-backend-production.up.railway.app/api';
 const AUTH_TOKEN = process.env.USER_JWT_TOKEN;
 
@@ -19,7 +20,7 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// ✅ 1. Detect User ID from /user_profile API
+// ✅ 1. Get User ID using JWT
 async function getUserId() {
   console.log('🔍 Fetching user profile using JWT...');
   try {
@@ -56,38 +57,37 @@ function convertToKg(weightStr) {
 }
 
 /**
- * ✅ 3. Convert inches → cm
+ * ✅ 3. Convert Inches → cm
  */
 function inchesToCm(value) {
   return value && !isNaN(value) ? parseFloat(value * 2.54).toFixed(1) : null;
 }
 
 /**
- * ✅ 4. Normalize Date → YYYY-MM-DD
- * Accepts formats like DD-MM-YYYY, DD/MM/YYYY, or YYYY-MM-DD
+ * ✅ 4. Normalize date to YYYY-MM-DD
+ * Handles formats like:
+ *  - DD-MM-YYYY
+ *  - DD/MM/YYYY
+ *  - YYYY-MM-DD (already normalized)
  */
-function normalizeDate(dateStr) {
-  if (!dateStr) return null;
+function normalizeDate(input) {
+  if (!input) return null;
+  let cleanDate = input.replace(/\//g, '-'); // Convert / to -
+  const parts = cleanDate.split('-');
 
-  // Replace slashes with dashes
-  const cleaned = dateStr.replace(/\//g, '-');
-
-  // If already in YYYY-MM-DD, return as is
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
-    return cleaned;
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // Already YYYY-MM-DD
+      return cleanDate;
+    } else {
+      // DD-MM-YYYY → YYYY-MM-DD
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
   }
-
-  // If DD-MM-YYYY, convert to YYYY-MM-DD
-  if (/^\d{2}-\d{2}-\d{4}$/.test(cleaned)) {
-    const [day, month, year] = cleaned.split('-');
-    return `${year}-${month}-${day}`;
-  }
-
-  console.warn(`⚠️ Invalid date format skipped: ${dateStr}`);
-  return null;
+  return cleanDate;
 }
 
-// ✅ 5. Bulk Weights Array
+// ✅ 5. Bulk Weight Entries
 const weightEntries = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
   { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
@@ -96,25 +96,21 @@ const weightEntries = [
   { date: "02-10-2024", weight: "16 st 6 lbs", notes: "" },
 ];
 
-// ✅ 6. Bulk Measurements Array
+// ✅ 6. Bulk Measurement Entries
 const measurementEntries = [
   { date: "30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knees: 18.5, ankles: 11, notes: "Great inch loss this time!" },
   { date: "10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knees: 18.5, ankles: 11, notes: "Bought new bras this week!" },
 ];
 
-// ✅ 7. Upload Weights
+// ✅ 7. Upload Weight Logs
 async function uploadWeights(userId) {
   console.log('📤 Uploading weight entries...');
   for (const entry of weightEntries) {
     const normalizedDate = normalizeDate(entry.date);
-    if (!normalizedDate) {
-      console.error(`❌ Skipping invalid date for weight entry: ${entry.date}`);
-      continue;
-    }
+    const weightKg = convertToKg(entry.weight);
 
     console.log(`➡ Preparing weight entry for ${entry.date} → ${normalizedDate}`);
 
-    const weightKg = convertToKg(entry.weight);
     const payload = {
       user_id: userId,
       weight: parseFloat(weightKg),
@@ -132,15 +128,11 @@ async function uploadWeights(userId) {
   }
 }
 
-// ✅ 8. Upload Measurements
+// ✅ 8. Upload Measurement Logs
 async function uploadMeasurements(userId) {
   console.log('\n📤 Uploading measurement entries...');
   for (const entry of measurementEntries) {
     const normalizedDate = normalizeDate(entry.date);
-    if (!normalizedDate) {
-      console.error(`❌ Skipping invalid date for measurement entry: ${entry.date}`);
-      continue;
-    }
 
     console.log(`➡ Preparing measurement entry for ${entry.date} → ${normalizedDate}`);
 
@@ -168,10 +160,10 @@ async function uploadMeasurements(userId) {
   }
 }
 
-// ✅ 9. Main Function
+// ✅ 9. Main Runner
 (async () => {
-  const detectedUserId = await getUserId();
-  await uploadWeights(detectedUserId);
-  await uploadMeasurements(detectedUserId);
+  const userId = await getUserId();
+  await uploadWeights(userId);
+  await uploadMeasurements(userId);
   console.log('\n🎉 All bulk uploads complete!');
 })();
