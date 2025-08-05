@@ -293,7 +293,7 @@ paths:
         "200":
           description: Returns a URL to the weight chart image
 
-/user_profile:
+/api/user_profile:
   get:
     summary: Get user profile using JWT
     description: Returns the authenticated user's ID based on the JWT token provided in the Authorization header.
