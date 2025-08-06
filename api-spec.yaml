@@ -13,6 +13,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas: {}  # ✅ This prevents the "schemas subsection is not an object" error
 
 paths:
   /api/ping:
