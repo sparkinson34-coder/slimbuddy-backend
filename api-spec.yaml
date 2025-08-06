@@ -1,23 +1,33 @@
 openapi: 3.1.0
 info:
-  title: SlimBuddy Backend API
-  description: API for logging meals, weight, exercise, measurements, updating settings, food values, and retrieving progress graphs for SlimBuddy users.
-  version: 1.0.2
+  title: SlimBuddy API
+  version: 1.0.0
+  description: API specification for SlimBuddy backend services.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
 paths:
   /api/ping:
     get:
-      summary: Check if API is alive
+      summary: Health check
+      operationId: getPingStatus
+      security: []  # No auth required
       responses:
         '200':
-          description: API is running
+          description: API is alive
 
   /api/log_weight:
     post:
-      summary: Log user weight
+      summary: Log a weight entry
+      operationId: logWeight
       security:
         - BearerAuth: []
       requestBody:
@@ -29,12 +39,13 @@ paths:
               properties:
                 weight:
                   type: number
+                  example: 75.5
+                date:
+                  type: string
+                  example: 2024-09-04
                 unit:
                   type: string
                   example: kg
-                date:
-                  type: string
-                  format: date
                 notes:
                   type: string
       responses:
@@ -43,7 +54,8 @@ paths:
 
   /api/log_measurements:
     post:
-      summary: Log user body measurements
+      summary: Log body measurements
+      operationId: logMeasurements
       security:
         - BearerAuth: []
       requestBody:
@@ -53,127 +65,99 @@ paths:
             schema:
               type: object
               properties:
-                bust: { type: number }
-                waist: { type: number }
-                hips: { type: number }
-                neck: { type: number }
-                arm: { type: number }
-                under_bust: { type: number }
-                thighs: { type: number }
-                knees: { type: number }
-                ankles: { type: number }
-                notes: { type: string }
-                date: { type: string, format: date }
+                date:
+                  type: string
+                  example: 2024-09-04
+                bust:
+                  type: number
+                waist:
+                  type: number
+                hips:
+                  type: number
+                neck:
+                  type: number
+                arm:
+                  type: number
+                under_bust:
+                  type: number
+                thighs:
+                  type: number
+                knees:
+                  type: number
+                ankles:
+                  type: number
+                notes:
+                  type: string
       responses:
         '200':
           description: Measurements logged successfully
 
   /api/log_meal:
     post:
-      summary: Log meal for the user
+      summary: Log a meal
+      operationId: logMeal
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                meal_name: { type: string }
-                calories: { type: number }
-                syns: { type: number }
-                date: { type: string, format: date }
       responses:
         '200':
           description: Meal logged successfully
 
   /api/log_exercise:
     post:
-      summary: Log exercise activity
+      summary: Log exercise
+      operationId: logExercise
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                exercise_type: { type: string }
-                duration_minutes: { type: number }
-                calories_burned: { type: number }
-                date: { type: string, format: date }
       responses:
         '200':
           description: Exercise logged successfully
 
   /api/weight_graph:
     get:
-      summary: Get weight graph data for user
+      summary: Get weight graph data
+      operationId: getWeightGraph
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Weight graph data returned successfully
+          description: Weight graph data retrieved
 
   /api/user_profile:
     get:
-      summary: Get user profile using JWT
+      summary: Get user profile
+      operationId: getUserProfile
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Returns authenticated user profile
+          description: User profile retrieved
 
   /api/user_goals:
     get:
-      summary: Fetch user goals
+      summary: Get user goals
+      operationId: getUserGoals
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: User goals retrieved successfully
+          description: User goals retrieved
 
   /api/update_user_settings:
     put:
       summary: Update user settings
+      operationId: updateUserSettings
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                target_weight: { type: number }
-                daily_syn_limit: { type: number }
       responses:
         '200':
-          description: Settings updated successfully
+          description: User settings updated
 
   /api/update_food_value:
     put:
-      summary: Update food value (e.g., Syns)
+      summary: Update food value
+      operationId: updateFoodValue
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                food_name: { type: string }
-                syn_value: { type: number }
       responses:
         '200':
-          description: Food value updated successfully
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+          description: Food value updated
