@@ -12,16 +12,18 @@ app.get('/', (req, res) => {
 });
 
 // Import all your routes here (each module should export an Express Router)
-app.use('/api/ping',                require('./api/ping'));
-app.use('/api/log_meal',            require('./api/log_meal'));
-app.use('/api/log_weight',          require('./api/log_weight'));
-app.use('/api/log_exercise',        require('./api/log_exercise'));
-app.use('/api/log_measurements',    require('./api/log_measurements'));
-app.use('/api/user_profile',        require('./api/user_profile'));
-app.use('/api/user_goals',          require('./api/user_goals'));
-app.use('/api/update_user_settings',require('./api/update_user_settings'));
-app.use('/api/update_food_value',   require('./api/update_food_value'));
-app.use('/api/weight_graph',        require('./api/weight_graph'));
+app.use('/api/log_meal', require('./api/log_meal'));
+app.use('/api/log_weight', require('./api/log_weight'));
+app.use('/api/log_exercise', require('./api/log_exercise'));
+app.use('/api/log_measurements', require('./api/log_measurements'));
+app.use('/api/user_goals', require('./api/user_goals'));
+app.use('/api/update_user_settings', require('./api/update_user_settings'));
+app.use('/api/update_food_value', require('./api/update_food_value'));
+app.use('/api/weight_graph', require('./api/weight_graph')); // ✅ Added missing route
+app.use('/api/ping', require('./api/ping'));
+
+const userProfileRoute = require('./api/user_profile');
+app.use('/api/user_profile', userProfileRoute);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
