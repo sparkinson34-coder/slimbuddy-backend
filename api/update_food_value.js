@@ -4,21 +4,30 @@ const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
 router.post('/', secureRoute, async (req, res) => {
-  const { user_id, food_name, syn_value, notes, is_healthy_extra_b } = req.body;
+  const { food_name, syn_value, notes, date } = req.body;
 
-  if (!user_id || !food_name || typeof syn_value !== 'number') {
-    return res.status(400).json({ error: 'Missing required fields: user_id, food_name, syn_value.' });
+  if (!food_name || syn_value == null) {
+    return res.status(400).json({ error: 'Missing required fields: food_name and syn_value' });
   }
 
-  try {
-    const { data, error } = await supabase.from('user_food_overrides').insert([
-      { user_id, food_name, syn_value, is_healthy_extra_b, notes }
-    ]);
-    if (error) throw error;
-    res.json({ message: 'Food value override logged successfully', data });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // Use today's date if none provided
+  const entryDate = date || new Date().toISOString().split('T')[0];
+
+  const { error } = await supabase
+    .from('syn_values')
+    .insert({
+      user_id: req.user.id,
+      food_name,
+      syn_value,
+      notes: notes || null,
+      date: entryDate
+    });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
+
+  res.json({ message: 'Syn value logged successfully' });
 });
 
 module.exports = router;

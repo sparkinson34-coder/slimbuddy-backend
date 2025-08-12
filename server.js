@@ -1,31 +1,24 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+// --- simple basic auth middleware just for the spec ---
+function specBasicAuth(req, res, next) {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
+    return res.status(401).send('Authentication required');
+  }
+  const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64')
+    .toString()
+    .split(':');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+  if (user === process.env.SPEC_USER && pass === process.env.SPEC_PASS) {
+    return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
+  return res.status(401).send('Invalid credentials');
+}
 
-// Example default route
-app.get('/', (req, res) => {
-  res.send('SlimBuddy API running!');
-});
-
-// Import all your routes here (each module should export an Express Router)
-app.use('/api/log_meal', require('./api/log_meal'));
-app.use('/api/log_weight', require('./api/log_weight'));
-app.use('/api/log_exercise', require('./api/log_exercise'));
-app.use('/api/log_measurements', require('./api/log_measurements'));
-app.use('/api/user_goals', require('./api/user_goals'));
-app.use('/api/update_user_settings', require('./api/update_user_settings'));
-app.use('/api/update_food_value', require('./api/update_food_value'));
-app.use('/api/weight_graph', require('./api/weight_graph')); // ✅ Added missing route
-app.use('/api/ping', require('./api/ping'));
-
-const userProfileRoute = require('./api/user_profile');
-app.use('/api/user_profile', userProfileRoute);
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`SlimBuddy API listening on port ${PORT}`);
+// --- serve the OpenAPI spec behind basic auth ---
+// If your file is spec/api-spec.yaml, use this path & URL:
+app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
+  res.type('text/yaml'); // optional nicety
+  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });

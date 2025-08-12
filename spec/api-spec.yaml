@@ -1,0 +1,237 @@
+openapi: 3.1.0
+
+info:
+  title: SlimBuddy API
+  version: 1.0.0
+  description: API specification for SlimBuddy backend services.
+
+servers:
+  - url: https://slimbuddy-backend-production.up.railway.app
+    description: Production server
+
+paths:
+  /api/ping:
+    get:
+      summary: Check API health
+      operationId: ping
+      responses:
+        '200':
+          description: API is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /api/log_meal:
+    post:
+      summary: Log a meal
+      operationId: log_meal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meal_type:
+                  type: string
+                  example: breakfast
+                meal_description:
+                  type: string
+                  example: 2 boiled eggs, toast
+                syns:
+                  type: number
+                  example: 3
+                date:
+                  type: string
+                  format: date
+                  example: 2025-08-08
+      responses:
+        '200':
+          description: Meal logged successfully
+
+  /api/log_weight:
+    post:
+      summary: Log a weight entry
+      operationId: log_weight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weight:
+                  type: number
+                  example: 72.5
+                date:
+                  type: string
+                  format: date
+                  example: 2025-08-08
+      responses:
+        '200':
+          description: Weight logged successfully
+
+  /api/log_measurements:
+    post:
+      summary: Log body measurements
+      operationId: log_measurements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bust_cm:
+                  type: number
+                  example: 92
+                waist_cm:
+                  type: number
+                  example: 75
+                hips_cm:
+                  type: number
+                  example: 98
+                date:
+                  type: string
+                  format: date
+                  example: 2025-08-08
+      responses:
+        '200':
+          description: Measurements logged successfully
+
+  /api/log_exercise:
+    post:
+      summary: Log exercise activity
+      operationId: log_exercise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exercise_description:
+                  type: string
+                  example: walking
+                calories_burned:
+                  type: number
+                  example: 250
+                steps:
+                  type: number
+                  example: 10000
+                distance_km:
+                  type: number
+                  example: 8
+                date:
+                  type: string
+                  format: date
+                  example: 2025-08-08
+      responses:
+        '200':
+          description: Exercise logged successfully
+
+  /api/update_user_settings:
+    post:
+      summary: Update user profile settings
+      operationId: update_user_settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preferred_name:
+                  type: string
+                  example: Sharon
+                preferred_weight_unit:
+                  type: string
+                  example: st_lb
+                syn_limit:
+                  type: number
+                  example: 15
+                target_weight:
+                  type: number
+                  example: 74.8
+                diet_preference:
+                  type: string
+                  example: vegetarian
+                allergies:
+                  type: string
+                  example: dairy
+                dislikes:
+                  type: string
+                  example: pork
+                typical_day_description:
+                  type: string
+                  example: I work at a desk and go walking at lunchtime
+                healthy_extra_a:
+                  type: string
+                  example: cheese
+                healthy_extra_b:
+                  type: string
+                  example: oats
+                maintenance_mode_enabled:
+                  type: boolean
+                  example: false
+      responses:
+        '200':
+          description: User settings updated
+
+  /api/user_goals:
+    get:
+      summary: Get current user goals
+      operationId: user_goals
+      responses:
+        '200':
+          description: User goals retrieved
+
+  /api/user_profile:
+    get:
+      summary: Get user profile
+      operationId: user_profile
+      responses:
+        '200':
+          description: User profile retrieved
+
+  /api/update_food_value:
+    post:
+      summary: Update Syn value for a food item
+      operationId: update_food_value
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                food_name:
+                  type: string
+                  example: porridge oats
+                syns:
+                  type: number
+                  example: 4
+      responses:
+        '200':
+          description: Food value updated
+
+  /api/weight_graph:
+    get:
+      summary: Retrieve weight graph data
+      operationId: weight_graph
+      responses:
+        '200':
+          description: Weight graph data retrieved
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - BearerAuth: [] 
