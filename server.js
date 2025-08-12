@@ -1,4 +1,14 @@
-// server.js
+/**
+ * ✅ SlimBuddy Main Server
+ * - Express backend serving all API routes
+ * - CORS + JSON parsing enabled globally
+ * - API routes mounted under /api/*
+ * - /spec/api-spec.yaml served with Basic Auth (SPEC_USER / SPEC_PASS)
+ * - /api/ping is public for health checks
+ * - All other routes require Bearer JWT handled in each route file
+ * - Starts server on PORT (Railway sets this automatically)
+ */
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -23,9 +33,9 @@ app.use('/api/log_measurements', require('./api/log_measurements'));
 app.use('/api/user_goals', require('./api/user_goals'));
 app.use('/api/update_user_settings', require('./api/update_user_settings'));
 app.use('/api/update_food_value', require('./api/update_food_value'));
-app.use('/api/weight_graph', require('./api/weight_graph'));   // if present
-app.use('/api/user_profile', require('./api/user_profile'));   // if present
-app.use('/api/ping', require('./api/ping'));
+app.use('/api/weight_graph', require('./api/weight_graph'));   // optional
+app.use('/api/user_profile', require('./api/user_profile'));   // optional
+app.use('/api/ping', require('./api/ping'));                   // public
 
 // --- Basic Auth just for the spec (uses SPEC_USER / SPEC_PASS) ---
 function specBasicAuth(req, res, next) {
@@ -43,7 +53,7 @@ function specBasicAuth(req, res, next) {
 }
 
 // --- serve the OpenAPI spec behind basic auth ---
-// Ensure the file exists at:  spec/api-spec.yaml
+// Ensure the file exists at: spec/api-spec.yaml
 app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));

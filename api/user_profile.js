@@ -1,3 +1,11 @@
+// api/user_profile.js
+/**
+ * ✅ User Profile API
+ * - Retrieves the authenticated user’s profile information from Supabase Auth
+ * - Reads Bearer JWT from Authorization header
+ * - Returns user_id and any relevant metadata from Supabase
+ */
+
 require('dotenv').config();
 const express = require('express');
 const router = express.Router();

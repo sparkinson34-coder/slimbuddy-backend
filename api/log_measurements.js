@@ -1,8 +1,12 @@
+// api/log_measurements.js
 /**
- * ✅ Measurements Logging API
- * - Normalizes date
- * - Converts inches to cm
- * - Uses user_id from JWT
+ * ✅ Body Measurements Logging API
+ * - Inserts a body measurement record for the authenticated user into body_measurements
+ * - Fields: chest, waist, hips, thigh, arm, date, notes
+ * - Reads user_id from the JWT (secureRoute)
+ * - All measurements stored in centimeters
+ * - If date is not provided, defaults to today
+ * - Returns the inserted record for confirmation
  */
 
 const express = require('express');

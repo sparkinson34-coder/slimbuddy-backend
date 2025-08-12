@@ -1,3 +1,15 @@
+// api/log_meal.js
+/**
+ * ✅ Meal Logging API
+ * - Inserts a meal record for the authenticated user into meal_logs
+ * - Fields: meal_type, food_items (array or comma-separated string), calories, protein, carbs, fat, date, notes
+ * - Reads user_id from the JWT (secureRoute)
+ * - If date is not provided, defaults to today
+ * - Supports multiple items in one meal entry
+ * - Returns the inserted record for confirmation
+ */
+
+
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');

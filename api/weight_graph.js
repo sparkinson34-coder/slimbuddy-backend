@@ -1,38 +1,58 @@
+// api/weight_graph.js
+/**
+ * ✅ Weight Graph API
+ * - Retrieves the weight log history for the authenticated user
+ * - Returns data points for graphing user weight over time
+ * - Accepts optional query parameters (e.g., date range)
+ * - Reads user_id from the JWT (secureRoute)
+ */
+
+require('dotenv').config();
 const express = require('express');
 const router = express.Router();
-const supabase = require('../lib/supabaseClient');
-const secureRoute = require('../lib/authMiddleware');
-const QuickChart = require('quickchart-js');
+const { createClient } = require('@supabase/supabase-js');
 
-router.get('/', secureRoute, async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(400).json({ error: 'Missing user_id' });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data, error } = await supabase
-    .from('weights')
-    .select('date, weight')
-    .eq('user_id', userId)
-    .order('date', { ascending: true });
+// GET /api/weight_graph?start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get('/', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header missing' });
+    }
 
-  if (error) return res.status(500).json({ error: error.message });
-  if (!data || data.length === 0) {
-    return res.json({ chartUrl: null, message: 'No weight data yet' });
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Token missing' });
+    }
+
+    // Validate token
+    const { data: user, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user?.user) {
+      return res.status(401).json({ error: 'Invalid token or user not found' });
+    }
+
+    const user_id = user.user.id;
+    const { start, end } = req.query;
+
+    let query = supabase
+      .from('weight_logs')
+      .select('date, weight')
+      .eq('user_id', user_id)
+      .order('date', { ascending: true });
+
+    if (start) query = query.gte('date', start);
+    if (end) query = query.lte('date', end);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return res.json({ user_id, data });
+  } catch (err) {
+    console.error('Error in /weight_graph:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-
-  const labels = data.map(d => d.date);
-  const values = data.map(d => d.weight);
-
-  const chart = new QuickChart();
-  chart.setConfig({
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{ label: 'Weight (kg)', data: values, fill: false, borderColor: 'blue' }]
-    },
-    options: { scales: { y: { beginAtZero: false } } }
-  });
-
-  res.json({ chartUrl: chart.getUrl() });
 });
 
 module.exports = router;

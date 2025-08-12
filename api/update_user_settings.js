@@ -1,3 +1,12 @@
+// api/update_user_setting.js
+/**
+ * ✅ Update User Settings API
+ * - Updates the user profile/settings record for the authenticated user
+ * - Fields can include preferred units, dietary preferences, notification settings, etc.
+ * - Reads user_id from the JWT (secureRoute)
+ * - Returns the updated settings record for confirmation
+ */
+
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
