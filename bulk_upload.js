@@ -17,13 +17,29 @@
  *   $env:TOKEN="PASTE_YOUR_JWT"
  *   node bulk_upload.js
  */
+/**
+ * ✅ SlimBuddy Bulk Upload (CommonJS + axios)
+ * - Uses env: BASE_URL, TOKEN  (JWT)
+ * - Normalizes dates to YYYY-MM-DD
+ * - Converts stones+lbs / lbs -> kg
+ * - Optional CSVs in /data:
+ *    bulk_weights.csv        date,weight,unit,notes
+ *    bulk_measurements.csv   date,bust,waist,hips,neck,arm,under_bust,thighs,knees,ankles,notes
+ *    bulk_meals.csv          date,meal_description,syns,calories,notes
+ *    bulk_exercises.csv      date,activity,duration_minutes,intensity,calories_burned,steps,distance_km,notes
+ *
+ * PowerShell:
+ *   $env:BASE_URL="https://slimbuddy-backend-production.up.railway.app"
+ *   $env:TOKEN="PASTE_YOUR_JWT"
+ *   # optional: $env:CONVERT_MEAS_INCHES="1"
+ *   node bulk_upload.js
+ */
 
 require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// ---------- Config ----------
 const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const TOKEN = process.env.TOKEN;
 if (!TOKEN) {
@@ -33,13 +49,13 @@ if (!TOKEN) {
 const API = `${BASE_URL}/api`;
 const HEADERS = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
 
-// ---------- Helpers ----------
+// ---------- helpers ----------
 function normalizeDate(input) {
   if (!input) return null;
   const s = String(input).trim().replace(/\//g, '-');
   const p = s.split('-');
-  if (p.length === 3 && p[0].length === 4) return s;             // already YYYY-MM-DD
-  if (p.length === 3) return `${p[2]}-${p[1]}-${p[0]}`;           // DD-MM-YYYY -> YYYY-MM-DD
+  if (p.length === 3 && p[0].length === 4) return s;        // YYYY-MM-DD
+  if (p.length === 3) return `${p[2]}-${p[1]}-${p[0]}`;      // DD-MM-YYYY -> YYYY-MM-DD
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
@@ -73,8 +89,6 @@ function inchesToCm(val) {
   const n = Number(val);
   return Number.isFinite(n) ? +((n * 2.54).toFixed(1)) : null;
 }
-
-// Simple CSV reader (no quotes/commas-inside-fields handling)
 function tryReadCsv(csvPath) {
   try {
     const raw = fs.readFileSync(csvPath, 'utf8').trim();
@@ -94,82 +108,52 @@ function tryReadCsv(csvPath) {
   }
 }
 
-// ---------- Inline Data (edit/append as needed) ----------
-// Weights: you can put "17 st 4.5", "200 lbs", or "92.3" (kg) in weight
+// ---------- inline data (edit/append) ----------
+// 👇 your sample entry — correctly inside the array
 const inlineWeights = [
-  // { date: '13/08/2025', weight: '82.4', notes: 'Manual example' },
-];
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
-  { date: "11-09-2024", weight: "17 st 0 lbs", notes: " " },
-  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
-  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: " " },
-  { date: "02-10-2024", weight: "16 st 6 lbs", notes: " " },
+];
 
-
-// Measurements (cm; if your source is inches, put inches and we’ll convert)
 const inlineMeasurements = [
   // { date: '13/08/2025', bust: 92, waist: 75, hips: 98, neck: 34, arm: 29, under_bust: 80, thighs: 58, knees: 36, ankles: 23, notes: '' },
 ];
-{ date:"30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
-  { date:"10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
 
-// Meals
 const inlineMeals = [
   // { date: '13/08/2025', meal_description: 'Chicken stir fry', syns: 3.5, calories: 420, notes: '1 tbsp soy sauce' },
 ];
 
-// Exercises
 const inlineExercises = [
   // { date: '13/08/2025', activity: 'Walking', duration_minutes: 45, intensity: 'Moderate', calories_burned: 300, steps: 7500, distance_km: 5.2, notes: 'Morning walk' },
 ];
 
 // ---------- CSV (optional) ----------
-const weightsFromCsv = tryReadCsv(path.join(__dirname, 'data', 'bulk_weights.csv'));
-const measuresFromCsv = tryReadCsv(path.join(__dirname, 'data', 'bulk_measurements.csv'));
-const mealsFromCsv = tryReadCsv(path.join(__dirname, 'data', 'bulk_meals.csv'));
-const exercisesFromCsv = tryReadCsv(path.join(__dirname, 'data', 'bulk_exercises.csv'));
+const weightsFromCsv    = tryReadCsv(path.join(__dirname, 'data', 'bulk_weights.csv'));
+const measuresFromCsv   = tryReadCsv(path.join(__dirname, 'data', 'bulk_measurements.csv'));
+const mealsFromCsv      = tryReadCsv(path.join(__dirname, 'data', 'bulk_meals.csv'));
+const exercisesFromCsv  = tryReadCsv(path.join(__dirname, 'data', 'bulk_exercises.csv'));
 
-// Normalize CSV shapes into our unified structures
 const csvWeights = weightsFromCsv.map(r => ({
-  date: r.date,
-  weight: r.weight,      // may contain "st  lb" form or lbs/kg
-  unit: r.unit || '',    // optional; we still convert to kg client-side
-  notes: r.notes || ''
+  date: r.date, weight: r.weight, unit: r.unit || '', notes: r.notes || ''
 }));
-
 const csvMeasurements = measuresFromCsv.map(r => ({
-  date: r.date,
-  bust: r.bust, waist: r.waist, hips: r.hips, neck: r.neck, arm: r.arm,
-  under_bust: r.under_bust, thighs: r.thighs, knees: r.knees, ankles: r.ankles,
-  notes: r.notes || ''
+  date: r.date, bust: r.bust, waist: r.waist, hips: r.hips, neck: r.neck, arm: r.arm,
+  under_bust: r.under_bust, thighs: r.thighs, knees: r.knees, ankles: r.ankles, notes: r.notes || ''
 }));
-
 const csvMeals = mealsFromCsv.map(r => ({
-  date: r.date,
-  meal_description: r.meal_description,
-  syns: r.syns,
-  calories: r.calories,
-  notes: r.notes || ''
+  date: r.date, meal_description: r.meal_description, syns: r.syns, calories: r.calories, notes: r.notes || ''
 }));
-
 const csvExercises = exercisesFromCsv.map(r => ({
-  date: r.date,
-  activity: r.activity,
-  duration_minutes: r.duration_minutes,
-  intensity: r.intensity,
-  calories_burned: r.calories_burned,
-  steps: r.steps,
-  distance_km: r.distance_km,
-  notes: r.notes || ''
+  date: r.date, activity: r.activity, duration_minutes: r.duration_minutes, intensity: r.intensity,
+  calories_burned: r.calories_burned, steps: r.steps, distance_km: r.distance_km, notes: r.notes || ''
 }));
 
-// Combined queues
-const weights = [...inlineWeights, ...csvWeights];
+// ---------- queues ----------
+const weights      = [...inlineWeights, ...csvWeights];
 const measurements = [...inlineMeasurements, ...csvMeasurements];
-const meals = [...inlineMeals, ...csvMeals];
-const exercises = [...inlineExercises, ...csvExercises];
+const meals        = [...inlineMeals, ...csvMeals];
+const exercises    = [...inlineExercises, ...csvExercises];
 
-// ---------- Optional sanity check ----------
+// ---------- optional sanity check ----------
 async function checkProfile() {
   try {
     const res = await axios.get(`${API}/user_profile`, { headers: HEADERS });
@@ -179,7 +163,7 @@ async function checkProfile() {
   }
 }
 
-// ---------- Uploaders ----------
+// ---------- uploaders ----------
 async function uploadWeights() {
   if (!weights.length) { console.log('\n⏭️  No weight entries.'); return; }
   console.log('\n📤 Uploading weight entries...');
@@ -201,15 +185,10 @@ async function uploadWeights() {
 }
 
 function cmOrInchesToCm(v) {
-  // If value is null/empty, return null
   if (v === undefined || v === null || v === '') return null;
   const n = Number(v);
   if (Number.isNaN(n)) return null;
-  // assume inches if it looks small (heuristic) — allow override by just giving cm directly
-  // But to avoid surprises, we won't auto-convert by size; instead, add a simple toggle:
-  // If you need inches->cm, just put inches in the CSV and set CONVERT_MEAS_INCHES=1
-  const convert = process.env.CONVERT_MEAS_INCHES === '1';
-  return convert ? inchesToCm(n) : n;
+  return process.env.CONVERT_MEAS_INCHES === '1' ? inchesToCm(n) : n;
 }
 
 async function uploadMeasurements() {
@@ -292,10 +271,15 @@ async function uploadExercises() {
   }
 }
 
-// ---------- Runner ----------
+// ---------- run ----------
 (async () => {
   console.log(`🔍 BASE_URL: ${BASE_URL}`);
-  await checkProfile();
+  try {
+    const res = await axios.get(`${API}/user_profile`, { headers: HEADERS });
+    if (res.data?.user_id) console.log(`🔐 Auth OK. user_id: ${res.data.user_id}`);
+  } catch {
+    console.log('ℹ️ /api/user_profile not available (optional). Continuing.');
+  }
 
   await uploadWeights();
   await uploadMeasurements();
