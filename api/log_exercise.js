@@ -4,55 +4,44 @@
  * - Uses names that match the DB exactly:
  *   activity, duration_minutes, intensity, calories_burned, steps, distance_km, date, notes
  * - Reads user_id from the JWT (secureRoute)
- * - If date is not provided, defaults to today
+ * - If date is not provided, defaults to today (YYYY-MM-DD)
  * - Returns the inserted record for confirmation
  */
-
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
-
-// Normalize DD/MM/YYYY or DD-MM-YYYY → YYYY-MM-DD
-function normalizeDate(dateStr) {
-  if (!dateStr) return null;
-  const cleaned = String(dateStr).replace(/\//g, '-');
-  const parts = cleaned.split('-');
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  return dateStr; // assume already ISO
-}
+const { normalizeDate } = require('../lib/date');
 
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id || req.user?.sub;
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
-
+    const user_id = req.user.id;
     const {
-      date,
       activity,
       duration_minutes,
       intensity,
       calories_burned,
       steps,
       distance_km,
+      date,
       notes
-    } = req.body || {};
+    } = req.body;
 
-    if (!date) return res.status(400).json({ error: 'Missing required field: date' });
-    if (!activity) return res.status(400).json({ error: 'Missing required field: activity' });
+    if (!activity || typeof activity !== 'string') {
+      return res.status(400).json({ error: 'Missing required field: activity.' });
+    }
+
+    const d = normalizeDate(date) || new Date().toISOString().slice(0, 10);
 
     const payload = {
       user_id,
-      date: normalizeDate(date),
       activity,
-      duration_minutes: duration_minutes != null ? Number(duration_minutes) : null,
+      duration_minutes: Number.isFinite(Number(duration_minutes)) ? Number(duration_minutes) : null,
       intensity: intensity || null,
-      calories_burned: calories_burned != null ? Number(calories_burned) : null,
-      steps: steps != null ? parseInt(steps, 10) : null,
-      distance_km: distance_km != null ? Number(distance_km) : null,
+      calories_burned: Number.isFinite(Number(calories_burned)) ? Number(calories_burned) : null,
+      steps: Number.isFinite(Number(steps)) ? Number(steps) : null,
+      distance_km: Number.isFinite(Number(distance_km)) ? Number(distance_km) : null,
+      date: d,
       notes: notes || null
     };
 
@@ -61,8 +50,8 @@ router.post('/', secureRoute, async (req, res) => {
 
     return res.json({ message: '✅ Exercise logged successfully', data });
   } catch (err) {
-    console.error('❌ log_exercise error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('log_exercise error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

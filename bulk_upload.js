@@ -1,169 +1,166 @@
 /**
- * ✅ SlimBuddy Bulk Upload Script (Final Version)
- * Features:
- *  - Auto-detect user_id from JWT
- *  - Normalizes date formats to YYYY-MM-DD
- *  - Converts Stones & Pounds → kg
- *  - Converts inches → cm
- *  - Detailed logging for debugging
+ * ✅ SlimBuddy Bulk Upload
+ * - Auth: reads JWT from env (TOKEN preferred; falls back to USER_JWT_TOKEN)
+ * - Normalizes dates to YYYY-MM-DD
+ * - Converts stones+lbs / lbs → kg
+ * - Converts inches → cm for measurements
+ * - Uses server-side JWT (no user_id in payload)
+ * - Prints clear progress + errors
+ *
+ * Usage (PowerShell):
+ *   $env:BASE_URL="https://slimbuddy-backend-production.up.railway.app"
+ *   $env:TOKEN="PASTE_YOUR_JWT"
+ *   node bulk_upload.js
  */
 
 require('dotenv').config();
 const axios = require('axios');
 
-// ✅ API Config
-const API_BASE = 'https://slimbuddy-backend-production.up.railway.app/api';
-const AUTH_TOKEN = process.env.USER_JWT_TOKEN;
+// --- config ---
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const TOKEN = process.env.TOKEN || process.env.USER_JWT_TOKEN;
 
-const HEADERS = {
-  Authorization: `Bearer ${AUTH_TOKEN}`,
-  'Content-Type': 'application/json',
-};
-
-// ✅ 1. Get User ID using JWT
-async function getUserId() {
-  console.log('🔍 Fetching user profile using JWT...');
-  try {
-    const response = await axios.get(`${API_BASE}/user_profile`, { headers: HEADERS });
-    if (response.data && response.data.user_id) {
-      console.log(`✅ Detected User ID: ${response.data.user_id}`);
-      return response.data.user_id;
-    }
-    throw new Error('User ID not found in response');
-  } catch (err) {
-    console.error('❌ Failed to fetch user profile:', err.response?.data || err.message);
-    process.exit(1);
-  }
+if (!BASE_URL) {
+  console.error('❌ BASE_URL is missing. Set BASE_URL env var.');
+  process.exit(1);
+}
+if (!TOKEN) {
+  console.error('❌ TOKEN is missing. Set TOKEN env var (or USER_JWT_TOKEN).');
+  process.exit(1);
 }
 
-/**
- * ✅ 2. Convert Stones & Pounds → kg
- */
-function convertToKg(weightStr) {
-  weightStr = weightStr.toLowerCase();
-  if (weightStr.includes('st')) {
-    const match = weightStr.match(/(\d+)\s*st\s*(\d+\.?\d*)?/);
-    if (match) {
-      const stones = parseInt(match[1]);
-      const pounds = parseFloat(match[2]) || 0;
-      return (stones * 6.35029 + pounds * 0.453592).toFixed(2);
-    }
-  }
-  if (weightStr.includes('lbs')) {
-    const lbs = parseFloat(weightStr);
-    return (lbs * 0.453592).toFixed(2);
-  }
-  return parseFloat(weightStr); // Assume already in kg
-}
+const API = `${BASE_URL.replace(/\/$/, '')}/api`;
+const HEADERS = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' };
 
-/**
- * ✅ 3. Convert Inches → cm
- */
-function inchesToCm(value) {
-  return value && !isNaN(value) ? parseFloat(value * 2.54).toFixed(1) : null;
-}
-
-/**
- * ✅ 4. Normalize date to YYYY-MM-DD
- * Handles formats like:
- *  - DD-MM-YYYY
- *  - DD/MM/YYYY
- *  - YYYY-MM-DD (already normalized)
- */
+// --- helpers ---
 function normalizeDate(input) {
   if (!input) return null;
-  let cleanDate = input.replace(/\//g, '-'); // Convert / to -
-  const parts = cleanDate.split('-');
-
+  const clean = String(input).trim().replace(/\//g, '-');
+  const parts = clean.split('-');
   if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      // Already YYYY-MM-DD
-      return cleanDate;
-    } else {
-      // DD-MM-YYYY → YYYY-MM-DD
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
+    // dd-mm-yyyy → yyyy-mm-dd
+    if (parts[0].length !== 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return clean; // already yyyy-mm-dd
   }
-  return cleanDate;
+  return clean;
 }
 
-// ✅ 5. Bulk Weight Entries
+function toKg(weightStr) {
+  if (weightStr == null) return null;
+  const s = String(weightStr).toLowerCase().trim();
+
+  // Match "12 st 7" or "12st 7lb/7lbs"
+  const stMatch = s.match(/(\d+(?:\.\d+)?)\s*st(?:one)?s?\s*(\d+(?:\.\d+)?)?\s*(lb|lbs)?/);
+  if (stMatch) {
+    const stones = parseFloat(stMatch[1]) || 0;
+    const pounds = parseFloat(stMatch[2]) || 0;
+    const totalLbs = stones * 14 + pounds;
+    return +(totalLbs * 0.45359237).toFixed(2);
+  }
+
+  // Match "200 lb"/"200 lbs"
+  const lbMatch = s.match(/(\d+(?:\.\d+)?)\s*(lb|lbs)\b/);
+  if (lbMatch) {
+    return +(parseFloat(lbMatch[1]) * 0.45359237).toFixed(2);
+  }
+
+  // Assume kg if it looks numeric
+  const kg = parseFloat(s);
+  return isNaN(kg) ? null : +kg.toFixed(2);
+}
+
+function inchesToCm(value) {
+  const n = parseFloat(value);
+  if (isNaN(n)) return null;
+  return +((n * 2.54).toFixed(1));
+}
+
+// --- sample data (edit as needed) ---
 const weightEntries = [
-  { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
-  { date: "11-09-2024", weight: "17 st 0 lbs", notes: "" },
-  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
-  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: "" },
-  { date: "02-10-2024", weight: "16 st 6 lbs", notes: "" },
+  { date: '04-09-2024', weight: '17 st 4.5 lbs', notes: '1/2 Stone Award' },
+  { date: '11-09-2024', weight: '17 st 0 lb', notes: '' },
+  { date: '18-09-2024', weight: '16 st 11.5 lbs', notes: '1 Stone Award' },
+  { date: '25-09-2024', weight: '16 st 7.5 lbs', notes: '' },
+  { date: '02-10-2024', weight: '16 st 6 lb', notes: '' },
 ];
 
-// ✅ 6. Bulk Measurement Entries
 const measurementEntries = [
-  { date: "30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knees: 18.5, ankles: 11, notes: "Great inch loss this time!" },
-  { date: "10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knees: 18.5, ankles: 11, notes: "Bought new bras this week!" },
+  { date: '30/10/2024', bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knees: 18.5, ankles: 11, notes: 'Great inch loss this time!' },
+  { date: '10/01/2025', bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knees: 18.5, ankles: 11, notes: 'Bought new bras this week!' },
 ];
 
-// ✅ 7. Upload Weight Logs
-async function uploadWeights(userId) {
-  console.log('📤 Uploading weight entries...');
+// --- optional: confirm token/user works ---
+async function checkProfile() {
+  try {
+    const res = await axios.get(`${API}/user_profile`, { headers: HEADERS });
+    if (res.data?.user_id) {
+      console.log(`🔐 Auth OK. user_id: ${res.data.user_id}`);
+    } else {
+      console.warn('⚠️ user_profile returned no user_id (route optional). Proceeding anyway.');
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not call /user_profile (optional). Proceeding.');
+  }
+}
+
+// --- uploads ---
+async function uploadWeights() {
+  console.log('\n📤 Uploading weight entries...');
   for (const entry of weightEntries) {
-    const normalizedDate = normalizeDate(entry.date);
-    const weightKg = convertToKg(entry.weight);
+    const date = normalizeDate(entry.date);
+    const kg = toKg(entry.weight);
+    if (!date || kg == null) {
+      console.error(`❌ Skipping invalid weight entry:`, entry);
+      continue;
+    }
 
-    console.log(`➡ Preparing weight entry for ${entry.date} → ${normalizedDate}`);
-
-    const payload = {
-      user_id: userId,
-      weight: parseFloat(weightKg),
-      unit: 'kg',
-      date: normalizedDate,
-      notes: entry.notes || '',
-    };
+    const payload = { date, unit: 'kg', weight: kg, notes: entry.notes || '' };
 
     try {
-      await axios.post(`${API_BASE}/log_weight`, payload, { headers: HEADERS });
-      console.log(`✅ Logged weight: ${entry.weight} (${weightKg} kg) on ${normalizedDate}`);
+      await axios.post(`${API}/log_weight`, payload, { headers: HEADERS });
+      console.log(`✅ Weight ${entry.weight} → ${kg} kg on ${date}`);
     } catch (err) {
-      console.error(`❌ Failed for ${entry.date}:`, err.response?.data || err.message);
+      console.error(`❌ log_weight ${date}:`, err.response?.data || err.message);
     }
   }
 }
 
-// ✅ 8. Upload Measurement Logs
-async function uploadMeasurements(userId) {
+async function uploadMeasurements() {
   console.log('\n📤 Uploading measurement entries...');
-  for (const entry of measurementEntries) {
-    const normalizedDate = normalizeDate(entry.date);
-
-    console.log(`➡ Preparing measurement entry for ${entry.date} → ${normalizedDate}`);
-
+  for (const m of measurementEntries) {
+    const date = normalizeDate(m.date);
+    if (!date) {
+      console.error(`❌ Skipping invalid measurement date:`, m.date);
+      continue;
+    }
     const payload = {
-      user_id: userId,
-      bust: inchesToCm(entry.bust),
-      waist: inchesToCm(entry.waist),
-      hips: inchesToCm(entry.hips),
-      neck: inchesToCm(entry.neck),
-      arm: inchesToCm(entry.arm),
-      under_bust: inchesToCm(entry.under_bust),
-      thighs: inchesToCm(entry.thighs),
-      knees: inchesToCm(entry.knees),
-      ankles: inchesToCm(entry.ankles),
-      notes: entry.notes || '',
-      date: normalizedDate,
+      date,
+      bust: inchesToCm(m.bust),
+      waist: inchesToCm(m.waist),
+      hips: inchesToCm(m.hips),
+      neck: inchesToCm(m.neck),
+      arm: inchesToCm(m.arm),
+      under_bust: inchesToCm(m.under_bust),
+      thighs: inchesToCm(m.thighs),
+      knees: inchesToCm(m.knees),
+      ankles: inchesToCm(m.ankles),
+      notes: m.notes || '',
     };
 
     try {
-      await axios.post(`${API_BASE}/log_measurements`, payload, { headers: HEADERS });
-      console.log(`✅ Logged measurements for ${normalizedDate}`);
+      await axios.post(`${API}/log_measurements`, payload, { headers: HEADERS });
+      console.log(`✅ Measurements saved for ${date}`);
     } catch (err) {
-      console.error(`❌ Failed for ${entry.date}:`, err.response?.data || err.message);
+      console.error(`❌ log_measurements ${date}:`, err.response?.data || err.message);
     }
   }
 }
 
-// ✅ 9. Main Runner
+// --- runner ---
 (async () => {
-  const userId = await getUserId();
-  await uploadWeights(userId);
-  await uploadMeasurements(userId);
-  console.log('\n🎉 All bulk uploads complete!');
+  console.log(`🔍 BASE_URL: ${BASE_URL}`);
+  await checkProfile();
+  await uploadWeights();
+  await uploadMeasurements();
+  console.log('\n🎉 Bulk upload complete.');
 })();

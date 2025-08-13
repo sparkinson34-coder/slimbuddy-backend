@@ -1,89 +1,66 @@
 // api/log_weight.js
 /**
  * ✅ Weight Logging API
- * - Accepts kg, lbs, or stones+pounds
- * - Converts and stores weight in kg
- * - Persists `unit: 'kg'` since the stored value is kg
- * - Uses user_id from JWT (secureRoute middleware)
+ * - Inserts a weight record for the authenticated user into weight_logs
+ * - Accepts units in kg, lbs, or st_lbs (stones + pounds) and converts to kg
+ * - Fields: weight (or stones+pounds), unit, date, notes
+ * - Reads user_id from the JWT (secureRoute)
+ * - If date is not provided, defaults to today (YYYY-MM-DD)
+ * - Returns the inserted record for confirmation
  */
-
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
+const { normalizeDate } = require('../lib/date');
 
-// Normalize DD/MM/YYYY or DD-MM-YYYY → YYYY-MM-DD
-function normalizeDate(dateStr) {
-  if (!dateStr) return null;
-  const cleaned = String(dateStr).replace(/\//g, '-');
-  const parts = cleaned.split('-');
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    // If already ISO (yyyy-mm-dd), this will still be fine if dd>31 check is needed later
-    if (yyyy.length === 4) return `${yyyy}-${mm}-${dd}`;
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  return dateStr; // assume already ISO
+function lbsToKg(lbs) {
+  const n = Number(lbs);
+  return Number.isFinite(n) ? +(n * 0.45359237).toFixed(2) : null;
 }
-
-// Convert incoming payload to kg
-function toKg({ weight, unit, stones, pounds }) {
-  if (!unit) throw new Error('unit is required: kg | lbs | st_lbs');
-
-  if (unit === 'kg') {
-    if (weight == null) throw new Error('weight is required for kg');
-    return Number(weight);
-  }
-
-  if (unit === 'lbs') {
-    if (weight == null) throw new Error('weight is required for lbs');
-    return Number(weight) * 0.45359237;
-  }
-
-  if (unit === 'st_lbs') {
-    const st = Number(stones ?? 0);
-    const lb = Number(pounds ?? 0);
-    if (isNaN(st) || st < 0) throw new Error('stones must be a non-negative number');
-    if (isNaN(lb) || lb < 0) throw new Error('pounds must be a non-negative number');
-    if (stones == null && pounds == null) {
-      throw new Error('stones (and optional pounds) required for st_lbs');
-    }
-    const totalLbs = st * 14 + lb;
-    return totalLbs * 0.45359237;
-  }
-
-  throw new Error('Unsupported unit. Use kg | lbs | st_lbs');
+function stLbsToKg(stones, pounds = 0) {
+  const st = Number(stones) || 0;
+  const lb = Number(pounds) || 0;
+  return +((st * 14 + lb) * 0.45359237).toFixed(2);
 }
 
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id || req.user?.sub; // from JWT
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+    const user_id = req.user.id;
+    const { weight, unit, stones, pounds, date, notes } = req.body;
 
-    const { weight, date, unit, notes, stones, pounds } = req.body || {};
-    if (!date || !unit) {
-      return res.status(400).json({ error: 'Missing required fields: date, unit' });
+    if (!unit || !['kg', 'lbs', 'st_lbs'].includes(unit)) {
+      return res.status(400).json({ error: 'Missing or invalid unit (kg | lbs | st_lbs).' });
     }
 
-    // Convert and normalize
-    const weightInKg = toKg({ weight, unit, stones, pounds });
-    const normalizedDate = normalizeDate(date);
+    let weightKg = null;
+    if (unit === 'kg') {
+      const n = Number(weight);
+      if (!Number.isFinite(n)) return res.status(400).json({ error: 'Missing or invalid weight (kg).' });
+      weightKg = +n.toFixed(2);
+    } else if (unit === 'lbs') {
+      if (weight == null) return res.status(400).json({ error: 'Missing weight (lbs).' });
+      weightKg = lbsToKg(weight);
+    } else if (unit === 'st_lbs') {
+      if (stones == null) return res.status(400).json({ error: 'Missing stones for st_lbs.' });
+      weightKg = stLbsToKg(stones, pounds);
+    }
+    if (weightKg == null || Number.isNaN(weightKg)) {
+      return res.status(400).json({ error: 'Invalid target weight after conversion.' });
+    }
 
-    const payload = {
-      user_id,
-      date: normalizedDate,
-      weight: Number(Number(weightInKg).toFixed(3)), // store kg to 3dp
-      unit: 'kg', // stored unit is kg for consistency
-      notes: notes || null,
-    };
+    const d = normalizeDate(date) || new Date().toISOString().slice(0, 10);
 
-    const { data, error } = await supabase.from('weight_logs').insert([payload]).select();
+    const { data, error } = await supabase
+      .from('weight_logs')
+      .insert([{ user_id, date: d, weight: weightKg, unit: 'kg', notes: notes || null }])
+      .select();
+
     if (error) throw error;
-
     return res.json({ message: '✅ Weight logged successfully', data });
   } catch (err) {
-    console.error('❌ Weight Log Error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('log_weight error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
