@@ -99,11 +99,19 @@ function tryReadCsv(csvPath) {
 const inlineWeights = [
   // { date: '13/08/2025', weight: '82.4', notes: 'Manual example' },
 ];
+  { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
+  { date: "11-09-2024", weight: "17 st 0 lbs", notes: " " },
+  { date: "18-09-2024", weight: "16 st 11.5 lbs", notes: "1 Stone Award" },
+  { date: "25-09-2024", weight: "16 st 7.5 lbs", notes: " " },
+  { date: "02-10-2024", weight: "16 st 6 lbs", notes: " " },
+
 
 // Measurements (cm; if your source is inches, put inches and we’ll convert)
 const inlineMeasurements = [
   // { date: '13/08/2025', bust: 92, waist: 75, hips: 98, neck: 34, arm: 29, under_bust: 80, thighs: 58, knees: 36, ankles: 23, notes: '' },
 ];
+{ date:"30/10/2024", bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knee: 18.5, ankles: 11, notes: "Great inch loss this time!" },
+  { date:"10/01/2025", bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knee: 18.5, ankles: 11, notes: "Bought new bras this week!" },
 
 // Meals
 const inlineMeals = [
