@@ -28,7 +28,7 @@ router.post('/', secureRoute, async (req, res) => {
 
     const { data, error } = await supabase
       .from('syn_values')
-      .upsert([{ user_id, food_name, syns: Number(syns), date: d, notes: notes || null }])
+      .upsert([{ user_id, food_name, syn_value: Number(syns), date: d, notes: notes || null }])
       .select();
 
     if (error) throw error;

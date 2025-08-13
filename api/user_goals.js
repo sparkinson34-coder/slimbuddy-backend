@@ -1,92 +1,89 @@
 // api/user_goals.js
 /**
  * ✅ User Goals API
- * - Stores or updates a goal for the authenticated user
- * - Accepts units in kg, lbs, or st_lbs (stones + pounds) and converts all values to kg for storage
- * - Reads user_id from the JWT (secureRoute)
- * - Optional target_date is stored in YYYY-MM-DD format
- * - Returns the inserted/updated goal record
+ * - Reads user_id from JWT (secureRoute)
+ * - Accepts target in kg, lbs, or st_lbs (stones+pounds) and stores kg
+ * - Fields:
+ *   - goal_type (required, string; e.g. 'weight_loss')
+ *   - unit (required: 'kg' | 'lbs' | 'st_lbs')
+ *   - target_value (number) OR stones+pounds when unit = 'st_lbs'
+ *   - target_date (optional; DD/MM/YYYY, DD-MM-YYYY, or YYYY-MM-DD)
+ * - Returns the inserted row
  */
 
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
+const { normalizeDate } = require('../lib/date');
 
-// Normalize DD/MM/YYYY or DD-MM-YYYY → YYYY-MM-DD
-function normalizeDate(dateStr) {
-  if (!dateStr) return null;
-  const cleaned = String(dateStr).replace(/\//g, '-');
-  const parts = cleaned.split('-');
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  return dateStr; // assume already ISO
+function lbsToKg(lbs) {
+  const n = Number(lbs);
+  return Number.isFinite(n) ? +(n * 0.45359237).toFixed(2) : null;
+}
+function stLbsToKg(stones, pounds = 0) {
+  const st = Number(stones);
+  const lb = Number(pounds || 0);
+  if (!Number.isFinite(st) || !Number.isFinite(lb)) return null;
+  return +((st * 14 + lb) * 0.45359237).toFixed(2);
 }
 
-// Convert any incoming value to kg
-function toKg({ value, unit, stones, pounds }) {
-  if (!unit || unit === 'kg') {
-    if (value == null) throw new Error('target_value is required when unit is kg');
-    return Number(value);
-  }
-  if (unit === 'lbs') {
-    if (value == null) throw new Error('target_value is required when unit is lbs');
-    return Number(value) * 0.45359237;
-  }
-  if (unit === 'st_lbs') {
-    const st = Number(stones ?? 0);
-    const lb = Number(pounds ?? 0);
-    if (stones == null && value != null) {
-      // support payloads that send "value" as total pounds while unit=st_lbs
-      return Number(value) * 0.45359237;
-    }
-    const totalLbs = st * 14 + lb;
-    return totalLbs * 0.45359237;
-  }
-  throw new Error('Unsupported unit. Use kg | lbs | st_lbs');
-}
-
-/**
- * POST /api/user_goals
- * Body: { goal_type, target_value, unit, target_date?, notes? , stones?, pounds? }
- * Stores: goal_type, target_value (kg), target_date (date)
- */
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id || req.user?.sub;
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+    const user_id = req.user.id;
+    const { goal_type, unit, target_value, stones, pounds, target_date } = req.body;
 
-    const {
-      goal_type,
-      target_value,         // number (kg or lbs depending on unit)
-      unit = 'kg',          // 'kg' | 'lbs' | 'st_lbs'
-      target_date,          // optional
-      stones,               // optional for st_lbs
-      pounds                // optional for st_lbs
-    } = req.body || {};
-
-    if (!goal_type) {
-      return res.status(400).json({ error: 'Missing required field: goal_type' });
+    // Basic required fields
+    if (!goal_type || typeof goal_type !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid goal_type.' });
     }
-    if (target_value == null && unit !== 'st_lbs') {
-      return res.status(400).json({ error: 'Missing required field: target_value' });
+    if (!unit || !['kg', 'lbs', 'st_lbs'].includes(unit)) {
+      return res.status(400).json({ error: "Missing or invalid unit. Use 'kg', 'lbs', or 'st_lbs'." });
     }
 
-    const targetValueKg = toKg({ value: target_value, unit, stones, pounds });
-    const normalizedDate = target_date ? normalizeDate(target_date) : null;
+    // Convert to kg
+    let targetValueKg = null;
+    if (unit === 'kg') {
+      const n = Number(target_value);
+      if (!Number.isFinite(n)) return res.status(400).json({ error: 'Missing or invalid target_value (kg).' });
+      targetValueKg = +n.toFixed(2);
+    } else if (unit === 'lbs') {
+      if (target_value == null) return res.status(400).json({ error: 'Missing target_value (lbs).' });
+      targetValueKg = lbsToKg(target_value);
+    } else if (unit === 'st_lbs') {
+      if (stones == null) return res.status(400).json({ error: 'Missing stones for st_lbs.' });
+      targetValueKg = stLbsToKg(stones, pounds);
+    }
+
+    if (targetValueKg == null || !Number.isFinite(targetValueKg) || targetValueKg <= 0) {
+      return res.status(400).json({ error: 'Invalid target weight after conversion.' });
+    }
+
+    // Optional date normalization
+    let targetDateIso = null;
+    if (target_date != null && target_date !== '') {
+      targetDateIso = normalizeDate(target_date);
+      if (!targetDateIso) {
+        return res.status(400).json({ error: 'Invalid target_date. Use YYYY-MM-DD or DD/MM/YYYY.' });
+      }
+    }
 
     const { data, error } = await supabase
       .from('user_goals')
-      .insert([{ user_id, goal_type, target_value: Number(targetValueKg.toFixed(3)), target_date: normalizedDate }])
+      .insert([{
+        user_id,
+        goal_type,
+        target_value: targetValueKg,   // stored in kg
+        target_date: targetDateIso     // may be null
+      }])
       .select();
 
     if (error) throw error;
-    return res.json({ message: '✅ Goal saved', data });
+
+    return res.json({ message: '✅ User goal logged successfully', data });
   } catch (err) {
-    console.error('❌ user_goals error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('user_goals error:', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
