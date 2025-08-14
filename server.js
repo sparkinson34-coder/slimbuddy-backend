@@ -13,8 +13,29 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express(); // ✅ define app before any app.use/app.get
+
+// THIS IS THE NEW SECTION signed import middleware: /spec/import.yaml?exp=<ms_since_epoch>&sig=<hmac>
+function verifySignedSpec(req, res, next) {
+  const { exp, sig } = req.query;
+  if (!exp || !sig) return res.status(401).send('Missing signature');
+  if (Date.now() > Number(exp)) return res.status(401).send('Link expired');
+  const raw = `exp=${exp}`;
+  const check = crypto
+    .createHmac('sha256', process.env.SPEC_IMPORT_SECRET)
+    .update(raw)
+    .digest('hex');
+  if (check !== sig) return res.status(401).send('Invalid signature');
+  next();
+}
+
+// THIS IS THE NEW SECTION Public, signed-only import endpoint (read-only)
+app.get('/spec/import.yaml', verifySignedSpec, (req, res) => {
+  res.type('text/yaml');
+  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
+});
 
 // --- core middleware ---
 app.use(cors());
