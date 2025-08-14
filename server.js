@@ -88,8 +88,18 @@ function specBasicAuth(req, res, next) {
 }
 
 // --- serve the OpenAPI spec behind basic auth ---
+// Human intervention/teammate route (passworded)
 // Ensure the file exists at: spec/api-spec.yaml
 app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
+  res.type('text/yaml');
+  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
+});
+
+// GPT importer route (public, returns the YAML directly)
+// Rationale: GPT needs anonymous access and the spec has no secrets
+app.get('/spec/import.yaml', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });
