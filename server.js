@@ -7,46 +7,39 @@
  * - /api/ping is public for health checks
  * - All other routes require Bearer JWT handled in each route file
  * - Starts server on PORT (Railway sets this automatically)
+ * ✅ SlimBuddy Spec Endpoints (Simple Import Flow)
+ * - /spec/api-spec.yaml  -> Basic Auth (human viewing)
+ * - /spec/import.yaml    -> Public (GPT imports)
+ *   The OpenAPI spec has NO secrets; runtime auth is via Bearer JWT.
  */
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
 const path = require('path');
-const crypto = require('crypto');
 
-const app = express(); // ✅ define app before any app.use/app.get
-
-// THIS IS THE NEW SECTION signed import middleware: /spec/import.yaml?exp=<ms_since_epoch>&sig=<hmac>
-function verifySignedSpec(req, res, next) {
-  const { exp, sig } = req.query;
-  const secret = process.env.SPEC_IMPORT_SECRET;
-
-  if (!exp || !sig) {
-    return res.status(400).json({ error: 'Missing signature or expiry' });
+// --- Basic Auth just for the human-readable spec (uses SPEC_USER / SPEC_PASS) ---
+function specBasicAuth(req, res, next) {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
+    return res.status(401).send('Authentication required');
   }
-
-  const now = Date.now();
-  if (now > parseInt(exp)) {
-    return res.status(403).json({ error: 'Link expired' });
-  }
-
-  const expectedSig = crypto
-    .createHmac('sha256', secret)
-    .update(`exp=${exp}`)
-    .digest('hex');
-
-  if (sig !== expectedSig) {
-    return res.status(403).json({ error: 'Invalid signature' });
-  }
-
-  next();
+  const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64').toString().split(':');
+  if (user === process.env.SPEC_USER && pass === process.env.SPEC_PASS) return next();
+  res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
+  return res.status(401).send('Invalid credentials');
 }
 
-module.exports = { verifySignedSpec };
+// Human/teammate route (passworded). Make sure spec/api-spec.yaml exists.
+app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
+  res.type('text/yaml');
+  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
+});
 
-// THIS IS THE NEW SECTION Public, signed-only import endpoint (read-only)
-app.get('/spec/import.yaml', verifySignedSpec, (req, res) => {
+// GPT importer route (public, returns YAML directly)
+// Rationale: GPT importer is anonymous and expects the actual OpenAPI YAML.
+// The spec must not contain secrets; auth happens at runtime via Bearer JWT.
+app.get('/spec/import.yaml', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });
