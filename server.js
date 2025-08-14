@@ -20,16 +20,30 @@ const app = express(); // ✅ define app before any app.use/app.get
 // THIS IS THE NEW SECTION signed import middleware: /spec/import.yaml?exp=<ms_since_epoch>&sig=<hmac>
 function verifySignedSpec(req, res, next) {
   const { exp, sig } = req.query;
-  if (!exp || !sig) return res.status(401).send('Missing signature');
-  if (Date.now() > Number(exp)) return res.status(401).send('Link expired');
-  const raw = `exp=${exp}`;
-  const check = crypto
-    .createHmac('sha256', process.env.SPEC_IMPORT_SECRET)
-    .update(raw)
+  const secret = process.env.SPEC_IMPORT_SECRET;
+
+  if (!exp || !sig) {
+    return res.status(400).json({ error: 'Missing signature or expiry' });
+  }
+
+  const now = Date.now();
+  if (now > parseInt(exp)) {
+    return res.status(403).json({ error: 'Link expired' });
+  }
+
+  const expectedSig = crypto
+    .createHmac('sha256', secret)
+    .update(`exp=${exp}`)
     .digest('hex');
-  if (check !== sig) return res.status(401).send('Invalid signature');
+
+  if (sig !== expectedSig) {
+    return res.status(403).json({ error: 'Invalid signature' });
+  }
+
   next();
 }
+
+module.exports = { verifySignedSpec };
 
 // THIS IS THE NEW SECTION Public, signed-only import endpoint (read-only)
 app.get('/spec/import.yaml', verifySignedSpec, (req, res) => {
