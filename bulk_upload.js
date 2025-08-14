@@ -1,23 +1,4 @@
 /**
- * ✅ SlimBuddy Bulk Upload (2025-08)
- * Uploads weights, measurements, meals, and exercises to your live backend.
- *
- * - Reads BASE_URL and TOKEN from environment variables
- * - Converts dates to YYYY-MM-DD
- * - Converts stones+lbs / lbs -> kg (weights)
- * - Converts inches -> cm (measurements) if needed
- * - Uses server routes:
- *   POST /api/log_weight
- *   POST /api/log_measurements
- *   POST /api/log_meal
- *   POST /api/log_exercise
- *
- * PowerShell (example):
- *   $env:BASE_URL="https://slimbuddy-backend-production.up.railway.app"
- *   $env:TOKEN="PASTE_YOUR_JWT"
- *   node bulk_upload.js
- */
-/**
  * ✅ SlimBuddy Bulk Upload (CommonJS + axios)
  * - Uses env: BASE_URL, TOKEN  (JWT)
  * - Normalizes dates to YYYY-MM-DD
@@ -112,10 +93,16 @@ function tryReadCsv(csvPath) {
 // 👇 your sample entry — correctly inside the array
 const inlineWeights = [
   { date: "04-09-2024", weight: "17 st 4.5 lbs", notes: "1/2 Stone Award" },
+  { date: '11-09-2024', weight: '17 st 0 lb', notes: '' },
+  { date: '18-09-2024', weight: '16 st 11.5 lbs', notes: '1 Stone Award' },
+  { date: '25-09-2024', weight: '16 st 7.5 lbs', notes: '' },
+  { date: '02-10-2024', weight: '16 st 6 lb', notes: '' }
 ];
 
 const inlineMeasurements = [
   // { date: '13/08/2025', bust: 92, waist: 75, hips: 98, neck: 34, arm: 29, under_bust: 80, thighs: 58, knees: 36, ankles: 23, notes: '' },
+  { date: '30-10-2024', bust: 46, waist: 39.5, hips: 50, neck: 15.5, arm: 15, under_bust: 38.5, thighs: 45.5, knees: 18.5, ankles: 11, notes: 'Great inch loss this time!' },
+  { date: '10-01-2025', bust: 44, waist: 35, hips: 47, neck: 14.5, arm: 14.5, under_bust: 36.5, thighs: 44, knees: 18.5, ankles: 11, notes: 'Bought new bras this week!' }
 ];
 
 const inlineMeals = [
