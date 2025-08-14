@@ -1,3 +1,11 @@
+// api/ping.js
+/**
+ * ✅ Ping API
+ * - Simple public route to check if the API is running
+ * - Does not require authentication
+ * - Returns a basic status response
+ */
+
 const express = require('express');
 const router = express.Router();
 

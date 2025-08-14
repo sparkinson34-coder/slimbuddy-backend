@@ -2,7 +2,9 @@ openapi: 3.0.3
 info:
   title: SlimBuddy API
   version: 1.0.0
-  description: API documentation for SlimBuddy backend
+  description: >
+    API for SlimBuddy. All routes require Bearer JWT except /api/ping (public)
+    and /spec/api-spec.yaml (Basic Auth for serving this spec).
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
@@ -21,10 +23,31 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/ping:
+    get:
+      summary: Health check
+      description: Public liveness endpoint (no auth required).
+      security: []
+      responses:
+        '200':
+          description: OK
+
+  /spec/api-spec.yaml:
+    get:
+      summary: Download OpenAPI spec (this file)
+      description: Served with Basic Auth to keep the GPT Actions import private.
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Spec served
+
   /api/log_meal:
     post:
       summary: Log a meal
-      description: Log a new meal for the authenticated user.
+      description: >
+        Logs a Slimming World–style meal. Syns and Healthy Extra flags are supported.
+        Calories are optional.
       security:
         - bearerAuth: []
       requestBody:
@@ -33,11 +56,7 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - date
-                - meal_type
-                - description
-                - calories
+              required: [date, meal_type, meal_description]
               properties:
                 date:
                   type: string
@@ -45,23 +64,36 @@ paths:
                   example: "2025-08-12"
                 meal_type:
                   type: string
-                  example: "Lunch"
-                description:
+                  example: "lunch"
+                meal_description:
                   type: string
-                  example: "Chicken salad with olive oil"
+                  example: "Chicken stir fry with soy sauce"
+                syns:
+                  type: number
+                  example: 3.5
+                healthy_extra_a_used:
+                  type: boolean
+                  example: false
+                healthy_extra_b_used:
+                  type: boolean
+                  example: true
                 calories:
                   type: integer
-                  example: 350
+                  example: 420
+                notes:
+                  type: string
+                  example: "Used 1 tbsp soy sauce"
       responses:
         '200':
-          description: Meal logged successfully
+          description: Meal logged
         '401':
           description: Unauthorized
 
   /api/log_weight:
     post:
-      summary: Log weight
-      description: Log a weight entry for the authenticated user.
+      summary: Log weight (stored in kg)
+      description: >
+        Accepts kg, lbs, or stones+pounds. Server converts to kg and stores with unit='kg'.
       security:
         - bearerAuth: []
       requestBody:
@@ -70,35 +102,43 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - date
-                - weight
-                - unit
+              required: [date, unit]
               properties:
                 date:
                   type: string
                   format: date
                   example: "2025-08-12"
-                weight:
-                  type: number
-                  example: 82.5
                 unit:
                   type: string
-                  enum: [kg, lb, st]
-                  example: "kg"
+                  enum: [kg, lbs, st_lbs]
+                  example: kg
+                weight:
+                  type: number
+                  description: Required if unit is kg or lbs
+                  example: 82.4
+                stones:
+                  type: integer
+                  description: Required if unit is st_lbs
+                  example: 12
+                pounds:
+                  type: number
+                  description: Optional if unit is st_lbs
+                  example: 13
                 notes:
                   type: string
-                  example: "Morning measurement after breakfast"
+                  example: "Post-workout weigh-in"
       responses:
         '200':
-          description: Weight logged successfully
+          description: Weight logged
         '401':
           description: Unauthorized
 
   /api/log_exercise:
     post:
       summary: Log exercise
-      description: Log an exercise entry for the authenticated user.
+      description: >
+        Records an exercise session. Supports optional duration, intensity, calories burned,
+        steps, and distance (km).
       security:
         - bearerAuth: []
       requestBody:
@@ -107,10 +147,7 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - date
-                - activity
-                - duration_minutes
+              required: [date, activity]
               properties:
                 date:
                   type: string
@@ -124,7 +161,6 @@ paths:
                   example: 45
                 intensity:
                   type: string
-                  enum: [Low, Moderate, High]
                   example: "Moderate"
                 calories_burned:
                   type: number
@@ -134,20 +170,22 @@ paths:
                   example: 7500
                 distance_km:
                   type: number
+                  format: float
                   example: 5.2
                 notes:
                   type: string
                   example: "Morning walk in the park"
       responses:
         '200':
-          description: Exercise logged successfully
+          description: Exercise logged
         '401':
           description: Unauthorized
 
   /api/log_measurements:
     post:
       summary: Log body measurements
-      description: Log body measurements for the authenticated user.
+      description: >
+        Stores body measurements (cm). If you send imperial, convert before sending.
       security:
         - bearerAuth: []
       requestBody:
@@ -156,26 +194,45 @@ paths:
           application/json:
             schema:
               type: object
+              required: [date]
               properties:
                 date:
                   type: string
                   format: date
                   example: "2025-08-12"
+                bust:
+                  type: number
+                  example: 92
                 waist:
                   type: number
-                  example: 80
+                  example: 75
                 hips:
                   type: number
-                  example: 95
-                chest:
+                  example: 98
+                neck:
                   type: number
-                  example: 100
+                  example: 34
+                arm:
+                  type: number
+                  example: 29
+                under_bust:
+                  type: number
+                  example: 80
+                thighs:
+                  type: number
+                  example: 58
+                knees:
+                  type: number
+                  example: 36
+                ankles:
+                  type: number
+                  example: 23
                 notes:
                   type: string
-                  example: "Post-workout measurements"
+                  example: "Evening readings"
       responses:
         '200':
-          description: Measurements logged successfully
+          description: Measurements logged
         '401':
           description: Unauthorized
 
@@ -183,8 +240,8 @@ paths:
     post:
       summary: Set or update a user goal
       description: >
-        Stores a goal for the authenticated user. Target values are converted to kilograms
-        server-side and stored in kg. Supports input in kg, lbs, or stones+pounds.
+        Stores a goal. Target values are converted to kilograms server-side and stored in kg.
+        Supports kg, lbs, or stones+pounds.
       security:
         - bearerAuth: []
       requestBody:
@@ -193,9 +250,7 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - goal_type
-                - unit
+              required: [goal_type, unit]
               properties:
                 goal_type:
                   type: string
@@ -204,7 +259,6 @@ paths:
                   type: string
                   enum: [kg, lbs, st_lbs]
                   example: kg
-                  description: Unit of the provided target value.
                 target_value:
                   type: number
                   description: Required if unit is kg or lbs.
@@ -220,7 +274,7 @@ paths:
                 target_date:
                   type: string
                   format: date
-                  description: Optional target date in YYYY-MM-DD.
+                  description: Optional YYYY-MM-DD
                   example: "2025-12-31"
       responses:
         '200':
@@ -229,9 +283,10 @@ paths:
           description: Unauthorized
 
   /api/update_user_settings:
-    post:
+    patch:
       summary: Update user settings
-      description: Update the authenticated user's settings.
+      description: >
+        Updates profile-like settings for the authenticated user.
       security:
         - bearerAuth: []
       requestBody:
@@ -241,13 +296,21 @@ paths:
             schema:
               type: object
               properties:
-                preferred_weight_unit:
-                  type: string
-                  enum: [kg, lb, st]
-                  example: "kg"
+                preferred_name: { type: string, example: "Sharon" }
+                tone: { type: string, example: "friendly" }
+                preferred_weight_unit: { type: string, example: "st_lbs" }
+                diet_preference: { type: string, example: "omnivore" }
+                food_allergies: { type: string, example: "none" }
+                food_dislikes: { type: string, example: "shellfish" }
+                typical_day: { type: string, example: "Desk job, lunchtime walk" }
+                healthy_extra_a: { type: string, example: "Low fat cheese" }
+                healthy_extra_b: { type: string, example: "Oats" }
+                syn_limit: { type: number, example: 15 }
+                target_weight: { type: number, example: 65 }
+                maintenance_mode_enabled: { type: boolean, example: false }
       responses:
         '200':
-          description: Settings updated successfully
+          description: Settings updated
         '401':
           description: Unauthorized
 
@@ -255,8 +318,7 @@ paths:
     post:
       summary: Save a Syn value for a food item
       description: >
-        Inserts a per-user Syn value entry into the canonical `syn_values` table. If `date` is
-        omitted, today's date is used.
+        Inserts a per-user Syn value entry into the canonical syn_values table. If date is omitted, today's date is used.
       security:
         - bearerAuth: []
       requestBody:
@@ -265,9 +327,7 @@ paths:
           application/json:
             schema:
               type: object
-              required:
-                - food_name
-                - syn_value
+              required: [food_name, syn_value]
               properties:
                 food_name:
                   type: string
@@ -277,7 +337,6 @@ paths:
                   example: 6
                 is_healthy_extra_b:
                   type: boolean
-                  description: Mark as Healthy Extra B when applicable.
                   example: false
                 notes:
                   type: string
@@ -285,7 +344,6 @@ paths:
                 date:
                   type: string
                   format: date
-                  description: Optional log date in YYYY-MM-DD.
                   example: "2025-08-12"
       responses:
         '200':
@@ -298,28 +356,23 @@ paths:
       summary: Get weight history for chart display
       description: >
         Returns the authenticated user's weight log history, ordered by date ascending.
-        Optional query parameters `start` and `end` can filter the results to a date range.
-        All weights are stored in kg.
+        Optional query parameters filter to a date range. All weights are stored in kg.
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: start
-          schema:
-            type: string
-            format: date
+          schema: { type: string, format: date }
           description: Optional start date (inclusive).
           example: "2025-01-01"
         - in: query
           name: end
-          schema:
-            type: string
-            format: date
+          schema: { type: string, format: date }
           description: Optional end date (inclusive).
           example: "2025-12-31"
       responses:
         '200':
-          description: Successful retrieval of weight history
+          description: Weight history returned
           content:
             application/json:
               schema:
@@ -328,7 +381,6 @@ paths:
                   user_id:
                     type: string
                     format: uuid
-                    example: "f4b4f4d6-56a9-4b0b-9b38-8f0d57a6a9d0"
                   data:
                     type: array
                     items:
@@ -337,50 +389,22 @@ paths:
                         date:
                           type: string
                           format: date
-                          example: "2025-08-12"
                         weight:
                           type: number
                           format: float
-                          example: 82.5
         '401':
           description: Unauthorized
 
   /api/user_profile:
     get:
-      summary: Get current user's profile
-      description: Returns the authenticated user's ID.
+      summary: (Optional) Get current user's ID
+      description: >
+        Optional helper route. Validates the Bearer token and returns the authenticated user's ID.
+        Safe to remove once GPT/frontends no longer need it.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Successful retrieval of user profile
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user_id:
-                    type: string
-                    format: uuid
-                    example: "f4b4f4d6-56a9-4b0b-9b38-8f0d57a6a9d0"
+          description: User ID returned
         '401':
           description: Unauthorized
-
-  /api/ping:
-    get:
-      summary: Ping API
-      description: Returns pong without authentication.
-      security: []
-      responses:
-        '200':
-          description: Pong
-
-  /spec/api-spec.yaml:
-    get:
-      summary: Download OpenAPI spec
-      description: Returns the OpenAPI specification YAML file for the SlimBuddy API.
-      security:
-        - basicAuth: []
-      responses:
-        '200':
-          description: OpenAPI spec retrieved successfully
