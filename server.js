@@ -3,7 +3,7 @@
  * SlimBuddy Backend (Express)
  * - Loads env vars
  * - Sets up CORS + JSON
- * - Mounts API routes (safe even if some files are missing)
+ * - Mounts API routes (safe even if a route file is missing)
  * - Serves OpenAPI spec:
  *     /spec/api-spec.yaml  -> Basic Auth (humans)
  *     /spec/import.yaml    -> Public (GPT "Import from URL")
@@ -16,7 +16,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const app = express(); // <-- define app FIRST
+const app = express(); // define app FIRST
 
 // ---------- core middleware ----------
 app.use(cors());
