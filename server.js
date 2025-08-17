@@ -102,6 +102,11 @@ app.get('/spec/import.yaml', (req, res) => {
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });
 
+// Healthcheck / Ping
+app.get('/api/ping', (req, res) => {
+  res.json({ ok: true, message: 'SlimBuddy backend is alive!' });
+});
+
 // ---------- 404 + error handlers ----------
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
