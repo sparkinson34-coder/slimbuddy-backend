@@ -3,142 +3,74 @@ info:
   title: SlimBuddy API
   version: 1.0.0
   description: >
-    REST API for SlimBuddy. Most routes require a per-user Bearer JWT (the user's
-    Supabase access_token). The GPT should **not** use global auth; instead pass
-    `Authorization: Bearer <token>` as a header on each protected call.
+    REST API for SlimBuddy. Protected calls require `Authorization: Bearer <user JWT>`
+    (Supabase access_token). Do NOT configure global auth in Actions; the GPT should
+    send this header per-request.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
-  parameters:
-    AuthorizationHeader:
-      name: Authorization
-      in: header
-      required: true
-      description: Bearer JWT copied from the YourSlimBuddy login page.
-      schema:
-        type: string
-        example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
   schemas:
     ApiMessage:
       type: object
       properties:
-        message:
-          type: string
+        message: { type: string }
       additionalProperties: false
 
     ErrorResponse:
       type: object
       properties:
-        error:
-          type: string
+        error: { type: string }
       additionalProperties: false
 
     LogMealRequest:
       type: object
       required: [date, meal_description, syns]
       properties:
-        date:
-          type: string
-          description: YYYY-MM-DD
-          example: "2025-08-13"
-        meal_type:
-          type: string
-          nullable: true
-          example: "Lunch"
-        meal_description:
-          type: string
-          example: "Chicken stir fry with soy sauce"
-        syns:
-          type: number
-          example: 3.5
-        calories:
-          type: integer
-          nullable: true
-          example: 420
-        healthy_extra_a_used:
-          type: boolean
-          nullable: true
-          example: false
-        healthy_extra_b_used:
-          type: boolean
-          nullable: true
-          example: false
-        notes:
-          type: string
-          nullable: true
-          example: "Used 1 tbsp soy sauce"
+        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
+        meal_type: { type: string, nullable: true, example: "Lunch" }
+        meal_description: { type: string, example: "Chicken stir fry with soy sauce" }
+        syns: { type: number, example: 3.5 }
+        calories: { type: integer, nullable: true, example: 420 }
+        healthy_extra_a_used: { type: boolean, nullable: true, example: false }
+        healthy_extra_b_used: { type: boolean, nullable: true, example: false }
+        notes: { type: string, nullable: true, example: "Used 1 tbsp soy sauce" }
       additionalProperties: false
 
     LogWeightRequest:
       type: object
       required: [date, weight, unit]
       properties:
-        date:
-          type: string
-          description: YYYY-MM-DD
-          example: "2025-08-13"
-        weight:
-          type: number
-          example: 82.4
+        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
+        weight: { type: number, example: 82.4 }
         unit:
           type: string
           description: Input unit; server stores kg
           enum: [kg, lb, st_lbs]
           example: kg
-        notes:
-          type: string
-          nullable: true
-          example: "Post-workout weigh-in"
+        notes: { type: string, nullable: true, example: "Post-workout weigh-in" }
       additionalProperties: false
 
     LogExerciseRequest:
       type: object
       required: [date, activity]
       properties:
-        date:
-          type: string
-          description: YYYY-MM-DD
-          example: "2025-08-13"
-        activity:
-          type: string
-          example: "Walking"
-        duration_minutes:
-          type: integer
-          nullable: true
-          example: 45
-        intensity:
-          type: string
-          nullable: true
-          example: "Moderate"
-        calories_burned:
-          type: number
-          nullable: true
-          example: 300
-        steps:
-          type: integer
-          nullable: true
-          example: 7500
-        distance_km:
-          type: number
-          nullable: true
-          example: 5.2
-        notes:
-          type: string
-          nullable: true
-          example: "Morning walk in the park"
+        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
+        activity: { type: string, example: "Walking" }
+        duration_minutes: { type: integer, nullable: true, example: 45 }
+        intensity: { type: string, nullable: true, example: "Moderate" }
+        calories_burned: { type: number, nullable: true, example: 300 }
+        steps: { type: integer, nullable: true, example: 7500 }
+        distance_km: { type: number, nullable: true, example: 5.2 }
+        notes: { type: string, nullable: true, example: "Morning walk in the park" }
       additionalProperties: false
 
     LogMeasurementsRequest:
       type: object
       required: [date]
       properties:
-        date:
-          type: string
-          description: YYYY-MM-DD
-          example: "2025-08-13"
+        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
         bust: { type: number, nullable: true, example: 92 }
         waist: { type: number, nullable: true, example: 75 }
         hips: { type: number, nullable: true, example: 98 }
@@ -155,18 +87,9 @@ components:
       type: object
       required: [goal_type, target_value, target_date]
       properties:
-        goal_type:
-          type: string
-          description: e.g., weight_loss or maintenance
-          example: "weight_loss"
-        target_value:
-          type: number
-          description: Target value in kg
-          example: 79.38
-        target_date:
-          type: string
-          description: YYYY-MM-DD
-          example: "2025-09-30"
+        goal_type: { type: string, description: e.g., weight_loss or maintenance, example: "weight_loss" }
+        target_value: { type: number, description: Target in kg, example: 79.38 }
+        target_date: { type: string, description: YYYY-MM-DD, example: "2025-09-30" }
       additionalProperties: false
 
     UpdateUserSettingsRequest:
@@ -194,11 +117,7 @@ components:
         food_name: { type: string, example: "Weetabix Minis - Chocolate" }
         syn_value: { type: number, example: 6 }
         notes: { type: string, nullable: true, example: "Corrected from 4 to 6 Syns" }
-        date:
-          type: string
-          nullable: true
-          description: YYYY-MM-DD
-          example: "2025-08-13"
+        date: { type: string, nullable: true, description: YYYY-MM-DD, example: "2025-08-13" }
       additionalProperties: false
 
 paths:
@@ -209,58 +128,51 @@ paths:
       description: Returns simple status payload. No Authorization header required.
       responses:
         '200':
-            description: OK
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    status: { type: string, example: ok }
-                    message: { type: string, example: SlimBuddy API is alive }
-                    timestamp: { type: string, example: "2025-08-13T08:31:47.302Z" }
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  message: { type: string, example: SlimBuddy API is alive }
+                  timestamp: { type: string, example: "2025-08-13T08:31:47.302Z" }
 
   /api/log_meal:
     post:
       operationId: logMeal
       summary: Log a meal/snack
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LogMealRequest'
+            schema: { $ref: '#/components/schemas/LogMealRequest' }
       responses:
-        '200':
-          description: Meal logged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiMessage'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '200': { description: Meal logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/log_weight:
     post:
       operationId: logWeight
       summary: Log a weight entry
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LogWeightRequest'
+            schema: { $ref: '#/components/schemas/LogWeightRequest' }
       responses:
         '200': { description: Weight logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -271,13 +183,16 @@ paths:
       operationId: logExercise
       summary: Log an exercise session
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LogExerciseRequest'
+            schema: { $ref: '#/components/schemas/LogExerciseRequest' }
       responses:
         '200': { description: Exercise logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -288,13 +203,16 @@ paths:
       operationId: logMeasurements
       summary: Log body measurements (cm)
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LogMeasurementsRequest'
+            schema: { $ref: '#/components/schemas/LogMeasurementsRequest' }
       responses:
         '200': { description: Measurements logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -305,13 +223,16 @@ paths:
       operationId: setUserGoal
       summary: Create/update a goal (target stored as kg)
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/UserGoalsRequest'
+            schema: { $ref: '#/components/schemas/UserGoalsRequest' }
       responses:
         '200': { description: Goal saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -322,13 +243,16 @@ paths:
       operationId: updateUserSettings
       summary: Update (upsert) user profile/settings
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserSettingsRequest'
+            schema: { $ref: '#/components/schemas/UpdateUserSettingsRequest' }
       responses:
         '200': { description: Settings saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -339,13 +263,16 @@ paths:
       operationId: updateFoodValue
       summary: Create/update a Syn value entry
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateFoodValueRequest'
+            schema: { $ref: '#/components/schemas/UpdateFoodValueRequest' }
       responses:
         '200': { description: Syn value saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
         '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
@@ -356,14 +283,18 @@ paths:
       operationId: getWeightGraph
       summary: Get weight entries (optionally scoped by range)
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
         - name: range
           in: query
           required: false
+          description: Optional time range window.
           schema:
             type: string
             enum: [7d, 30d, 90d, 1y, all]
-          description: Optional time range window.
       responses:
         '200':
           description: OK
@@ -387,7 +318,11 @@ paths:
       operationId: getUserProfile
       summary: Return the current user's id (from token)
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer JWT copied from the YourSlimBuddy login page.
+          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       responses:
         '200':
           description: OK
