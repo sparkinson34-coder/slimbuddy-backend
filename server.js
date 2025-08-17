@@ -41,6 +41,16 @@ function mountIfExists(routePath, routerFile) {
     console.warn(`Skipped ${routePath}: ${routerFile} not found`);
   }
 }
+// --- request audit (very light) ---
+app.use((req, res, next) => {
+  const started = Date.now();
+  const auth = req.headers.authorization || '';
+  const anon = auth ? auth.slice(0, 12) + '…' : '-';
+  res.on('finish', () => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now()-started}ms) auth:${anon}`);
+  });
+  next();
+});
 
 // ---------- mount API routes ----------
 mountIfExists('/api/log_meal', './api/log_meal');
