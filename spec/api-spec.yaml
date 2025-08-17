@@ -3,14 +3,20 @@ info:
   title: SlimBuddy API
   version: 1.0.0
   description: >
-    REST API for SlimBuddy. Protected calls require `Authorization: Bearer <user JWT>`
-    (Supabase access_token). Do NOT configure global auth in Actions; the GPT should
-    send this header per-request.
+    REST API for SlimBuddy. Calls require `Authorization: Bearer <user JWT>`
+    (Supabase access_token). GPT Actions auth should be set to API Key → Bearer
+    so each user pastes their own token.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     ApiMessage:
       type: object
@@ -120,12 +126,17 @@ components:
         date: { type: string, nullable: true, description: YYYY-MM-DD, example: "2025-08-13" }
       additionalProperties: false
 
+# Default: all routes require Bearer unless they override with `security: []`.
+security:
+  - bearerAuth: []
+
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check (no auth)
-      description: Returns simple status payload. No Authorization header required.
+      description: Returns simple status payload.
+      security: []   # opt out of auth here
       responses:
         '200':
           description: OK
@@ -142,12 +153,6 @@ paths:
     post:
       operationId: logMeal
       summary: Log a meal/snack
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -162,12 +167,6 @@ paths:
     post:
       operationId: logWeight
       summary: Log a weight entry
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -182,12 +181,6 @@ paths:
     post:
       operationId: logExercise
       summary: Log an exercise session
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -202,12 +195,6 @@ paths:
     post:
       operationId: logMeasurements
       summary: Log body measurements (cm)
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -222,12 +209,6 @@ paths:
     post:
       operationId: setUserGoal
       summary: Create/update a goal (target stored as kg)
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -242,12 +223,6 @@ paths:
     patch:
       operationId: updateUserSettings
       summary: Update (upsert) user profile/settings
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -262,12 +237,6 @@ paths:
     post:
       operationId: updateFoodValue
       summary: Create/update a Syn value entry
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       requestBody:
         required: true
         content:
@@ -283,11 +252,6 @@ paths:
       operationId: getWeightGraph
       summary: Get weight entries (optionally scoped by range)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
         - name: range
           in: query
           required: false
@@ -317,12 +281,6 @@ paths:
     get:
       operationId: getUserProfile
       summary: Return the current user's id (from token)
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: Bearer JWT copied from the YourSlimBuddy login page.
-          schema: { type: string, example: "Bearer eyJhbGciOi..." }
       responses:
         '200':
           description: OK
