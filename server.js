@@ -51,7 +51,6 @@ app.use((req, res, next) => {
   });
   next();
 });
-
 // ---------- mount API routes ----------
 mountIfExists('/api/log_meal', './api/log_meal');
 mountIfExists('/api/log_weight', './api/log_weight');
@@ -91,6 +90,9 @@ app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });
+
+// Health check for uptime pings 
+app.get('/healthz', (req,res)=>res.json({ok:true}));
 
 // GPT importer (public; spec contains no secrets; runtime auth is via Bearer JWT)
 app.get('/spec/import.yaml', (req, res) => {
