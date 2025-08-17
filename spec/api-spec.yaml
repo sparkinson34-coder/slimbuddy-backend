@@ -1,21 +1,25 @@
 openapi: 3.1.0
 info:
   title: SlimBuddy API
-  version: "1.0.0"
+  version: 1.0.0
   description: >
-    REST API for SlimBuddy. All endpoints (except /api/ping) require a Bearer JWT
-    (Supabase access_token). Dates prefer YYYY-MM-DD; server also accepts DD/MM/YYYY
-    and DD-MM-YYYY and normalizes them.
+    REST API for SlimBuddy. Most routes require a per-user Bearer JWT (the user's
+    Supabase access_token). The GPT should **not** use global auth; instead pass
+    `Authorization: Bearer <token>` as a header on each protected call.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+  parameters:
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: true
+      description: Bearer JWT copied from the YourSlimBuddy login page.
+      schema:
+        type: string
+        example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
   schemas:
     ApiMessage:
@@ -23,303 +27,346 @@ components:
       properties:
         message:
           type: string
-    Error:
+      additionalProperties: false
+
+    ErrorResponse:
       type: object
       properties:
         error:
           type: string
-    WeightLogRequest:
+      additionalProperties: false
+
+    LogMealRequest:
+      type: object
+      required: [date, meal_description, syns]
+      properties:
+        date:
+          type: string
+          description: YYYY-MM-DD
+          example: "2025-08-13"
+        meal_type:
+          type: string
+          nullable: true
+          example: "Lunch"
+        meal_description:
+          type: string
+          example: "Chicken stir fry with soy sauce"
+        syns:
+          type: number
+          example: 3.5
+        calories:
+          type: integer
+          nullable: true
+          example: 420
+        healthy_extra_a_used:
+          type: boolean
+          nullable: true
+          example: false
+        healthy_extra_b_used:
+          type: boolean
+          nullable: true
+          example: false
+        notes:
+          type: string
+          nullable: true
+          example: "Used 1 tbsp soy sauce"
+      additionalProperties: false
+
+    LogWeightRequest:
       type: object
       required: [date, weight, unit]
       properties:
         date:
           type: string
-          description: YYYY-MM-DD (UK formats accepted)
+          description: YYYY-MM-DD
+          example: "2025-08-13"
         weight:
           type: number
-          format: float
+          example: 82.4
         unit:
           type: string
-          enum: [kg, lbs, st_lbs]
+          description: Input unit; server stores kg
+          enum: [kg, lb, st_lbs]
+          example: kg
         notes:
           type: string
-    MealLogRequest:
-      type: object
-      required: [date, meal_description, syns]
-      properties:
-        date: { type: string }
-        meal_description: { type: string }
-        syns: { type: number }
-        calories:
-          type: number
-          description: Optional calorie estimate
-        notes: { type: string }
-    ExerciseLogRequest:
+          nullable: true
+          example: "Post-workout weigh-in"
+      additionalProperties: false
+
+    LogExerciseRequest:
       type: object
       required: [date, activity]
       properties:
-        date: { type: string }
-        activity: { type: string }
-        duration_minutes: { type: number }
-        intensity: { type: string }
-        calories_burned: { type: number }
-        steps: { type: number }
-        distance_km: { type: number }
-        notes: { type: string }
-    MeasurementsLogRequest:
+        date:
+          type: string
+          description: YYYY-MM-DD
+          example: "2025-08-13"
+        activity:
+          type: string
+          example: "Walking"
+        duration_minutes:
+          type: integer
+          nullable: true
+          example: 45
+        intensity:
+          type: string
+          nullable: true
+          example: "Moderate"
+        calories_burned:
+          type: number
+          nullable: true
+          example: 300
+        steps:
+          type: integer
+          nullable: true
+          example: 7500
+        distance_km:
+          type: number
+          nullable: true
+          example: 5.2
+        notes:
+          type: string
+          nullable: true
+          example: "Morning walk in the park"
+      additionalProperties: false
+
+    LogMeasurementsRequest:
       type: object
       required: [date]
       properties:
-        date: { type: string }
-        bust: { type: number }
-        waist: { type: number }
-        hips: { type: number }
-        neck: { type: number }
-        arm: { type: number }
-        under_bust: { type: number }
-        thighs: { type: number }
-        knees: { type: number }
-        ankles: { type: number }
-        notes: { type: string }
-    UserGoalRequest:
+        date:
+          type: string
+          description: YYYY-MM-DD
+          example: "2025-08-13"
+        bust: { type: number, nullable: true, example: 92 }
+        waist: { type: number, nullable: true, example: 75 }
+        hips: { type: number, nullable: true, example: 98 }
+        thighs: { type: number, nullable: true, example: 58 }
+        neck: { type: number, nullable: true, example: 34 }
+        arm: { type: number, nullable: true, example: 29 }
+        under_bust: { type: number, nullable: true, example: 80 }
+        knees: { type: number, nullable: true, example: 36 }
+        ankles: { type: number, nullable: true, example: 23 }
+        notes: { type: string, nullable: true, example: "Evening readings" }
+      additionalProperties: false
+
+    UserGoalsRequest:
       type: object
       required: [goal_type, target_value, target_date]
       properties:
         goal_type:
           type: string
-          description: e.g. weight_loss
+          description: e.g., weight_loss or maintenance
+          example: "weight_loss"
         target_value:
           type: number
-          description: Stored in kg
+          description: Target value in kg
+          example: 79.38
         target_date:
           type: string
           description: YYYY-MM-DD
+          example: "2025-09-30"
+      additionalProperties: false
+
     UpdateUserSettingsRequest:
       type: object
+      description: Send only fields that changed; server upserts.
       properties:
-        preferred_name: { type: string }
-        tone: { type: string }
-        preferred_weight_unit: { type: string, enum: [kg, lbs, st_lbs] }
-        diet_preference: { type: string }
-        food_allergies: { type: string }
-        food_dislikes: { type: string }
-        typical_day: { type: string }
-        healthy_extra_a: { type: string }
-        healthy_extra_b: { type: string }
-        syn_limit: { type: number }
-        target_weight: { type: number, description: Stored in kg }
-        maintenance_mode_enabled: { type: boolean }
+        preferred_name: { type: string, example: "Sharon" }
+        tone: { type: string, example: "friendly" }
+        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lb], example: "st_lbs" }
+        diet_preference: { type: string, example: "omnivore" }
+        food_allergies: { type: string, example: "none" }
+        food_dislikes: { type: string, example: "shellfish" }
+        typical_day: { type: string, example: "Desk job, lunchtime walk" }
+        healthy_extra_a: { type: string, example: "Low fat cheese" }
+        healthy_extra_b: { type: string, example: "Oats" }
+        syn_limit: { type: integer, example: 15 }
+        target_weight: { type: number, description: kg, example: 65 }
+        maintenance_mode_enabled: { type: boolean, example: false }
+      additionalProperties: false
 
-security:
-  - bearerAuth: []
+    UpdateFoodValueRequest:
+      type: object
+      required: [food_name, syn_value]
+      properties:
+        food_name: { type: string, example: "Weetabix Minis - Chocolate" }
+        syn_value: { type: number, example: 6 }
+        notes: { type: string, nullable: true, example: "Corrected from 4 to 6 Syns" }
+        date:
+          type: string
+          nullable: true
+          description: YYYY-MM-DD
+          example: "2025-08-13"
+      additionalProperties: false
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check (no auth)
-      security: []   # public
+      description: Returns simple status payload. No Authorization header required.
       responses:
-        "200":
-          description: Alive
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string }
-                  message: { type: string }
-                  timestamp: { type: string, format: date-time }
+        '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status: { type: string, example: ok }
+                    message: { type: string, example: SlimBuddy API is alive }
+                    timestamp: { type: string, example: "2025-08-13T08:31:47.302Z" }
 
   /api/log_meal:
     post:
       operationId: logMeal
-      summary: Log a meal
+      summary: Log a meal/snack
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MealLogRequest"
+              $ref: '#/components/schemas/LogMealRequest'
       responses:
-        "200":
+        '200':
           description: Meal logged
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
+                $ref: '#/components/schemas/ApiMessage'
+        '400':
           description: Bad request
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   /api/log_weight:
     post:
       operationId: logWeight
       summary: Log a weight entry
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WeightLogRequest"
+              $ref: '#/components/schemas/LogWeightRequest'
       responses:
-        "200":
-          description: Weight logged
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Weight logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/log_exercise:
     post:
       operationId: logExercise
       summary: Log an exercise session
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ExerciseLogRequest"
+              $ref: '#/components/schemas/LogExerciseRequest'
       responses:
-        "200":
-          description: Exercise logged
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Exercise logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/log_measurements:
     post:
       operationId: logMeasurements
-      summary: Log body measurements
+      summary: Log body measurements (cm)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MeasurementsLogRequest"
+              $ref: '#/components/schemas/LogMeasurementsRequest'
       responses:
-        "200":
-          description: Measurements logged
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Measurements logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/user_goals:
     post:
       operationId: setUserGoal
-      summary: Create a user goal
+      summary: Create/update a goal (target stored as kg)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UserGoalRequest"
+              $ref: '#/components/schemas/UserGoalsRequest'
       responses:
-        "200":
-          description: Goal saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Goal saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/update_user_settings:
     patch:
       operationId: updateUserSettings
-      summary: Update user settings (upsert)
+      summary: Update (upsert) user profile/settings
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateUserSettingsRequest"
+              $ref: '#/components/schemas/UpdateUserSettingsRequest'
       responses:
-        "200":
-          description: Settings saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Settings saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/update_food_value:
     post:
       operationId: updateFoodValue
-      summary: Add or update a food Syn value
+      summary: Create/update a Syn value entry
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [food_name, syn_value]
-              properties:
-                date: { type: string }
-                food_name: { type: string }
-                syn_value: { type: number }
-                notes: { type: string }
+              $ref: '#/components/schemas/UpdateFoodValueRequest'
       responses:
-        "200":
-          description: Syn value saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiMessage"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+        '200': { description: Syn value saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
+        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/weight_graph:
     get:
       operationId: getWeightGraph
-      summary: Get recent weight data points for charting
+      summary: Get weight entries (optionally scoped by range)
       parameters:
-        - in: query
-          name: range
+        - $ref: '#/components/parameters/AuthorizationHeader'
+        - name: range
+          in: query
           required: false
           schema:
             type: string
             enum: [7d, 30d, 90d, 1y, all]
-          description: Optional time range
+          description: Optional time range window.
       responses:
-        "200":
-          description: Data points
+        '200':
+          description: OK
           content:
             application/json:
               schema:
@@ -331,31 +378,23 @@ paths:
                     items:
                       type: object
                       properties:
-                        date: { type: string }
-                        weight: { type: number }
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+                        date: { type: string, example: "2025-08-13" }
+                        weight: { type: number, example: 82.4 }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
 
   /api/user_profile:
     get:
       operationId: getUserProfile
-      summary: Get current user profile (just user_id)
+      summary: Return the current user's id (from token)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
-        "200":
-          description: Current authenticated user
+        '200':
+          description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  user_id: { type: string }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+                  user_id: { type: string, example: "ca2a7bd6-cfc4-428a-b643-746d83414b16" }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
