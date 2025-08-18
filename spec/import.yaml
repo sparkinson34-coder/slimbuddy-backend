@@ -1,2 +1,377 @@
-type: openapi
-url: https://slimbuddy-backend-production.up.railway.app/spec/import.yaml
+openapi: 3.1.0
+info:
+  title: SlimBuddy API (Public Import Spec for GPT)
+  version: 1.0.0
+  description: >
+    Public OpenAPI for ChatGPT Actions. All endpoints require JWT Bearer auth,
+    except /api/ping which is unauthenticated for health checks.
+
+servers:
+  - url: https://slimbuddy-backend-production.up.railway.app
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiMessage:
+      type: object
+      properties:
+        message:
+          type: string
+    ApiOk:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    UserId:
+      type: object
+      properties:
+        user_id:
+          type: string
+      required: [user_id]
+    WeightLogRequest:
+      type: object
+      required: [date, weight, unit]
+      properties:
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        weight:
+          type: number
+        unit:
+          type: string
+          enum: [kg, lb, st_lbs]
+        notes:
+          type: string
+    MealLogRequest:
+      type: object
+      required: [date, meal_description, syns]
+      properties:
+        date:
+          type: string
+          format: date
+        meal_description:
+          type: string
+        syns:
+          type: number
+          description: Syns rounded to nearest 0.5
+        calories:
+          type: integer
+          nullable: true
+        healthy_extra_a_used:
+          type: boolean
+          nullable: true
+        healthy_extra_b_used:
+          type: boolean
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+    ExerciseLogRequest:
+      type: object
+      required: [date, activity]
+      properties:
+        date:
+          type: string
+          format: date
+        activity:
+          type: string
+        duration_minutes:
+          type: integer
+          nullable: true
+        intensity:
+          type: string
+          nullable: true
+        calories_burned:
+          type: integer
+          nullable: true
+        steps:
+          type: integer
+          nullable: true
+        distance_km:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+    MeasurementsRequest:
+      type: object
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+        bust: { type: number, nullable: true }
+        waist: { type: number, nullable: true }
+        hips: { type: number, nullable: true }
+        thighs: { type: number, nullable: true }
+        neck: { type: number, nullable: true }
+        arm: { type: number, nullable: true }
+        under_bust: { type: number, nullable: true }
+        knees: { type: number, nullable: true }
+        ankles: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
+    UserGoalRequest:
+      type: object
+      required: [goal_type, target_value, target_date]
+      properties:
+        goal_type:
+          type: string
+          description: e.g., weight_loss, maintenance
+        target_value:
+          type: number
+          description: Target weight in kg
+        target_date:
+          type: string
+          format: date
+    UserSettingsPatch:
+      type: object
+      description: Send only the fields that changed
+      properties:
+        preferred_name: { type: string }
+        tone: { type: string }
+        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lb] }
+        diet_preference: { type: string }
+        food_allergies: { type: string }
+        food_dislikes: { type: string }
+        typical_day: { type: string }
+        healthy_extra_a: { type: string }
+        healthy_extra_b: { type: string }
+        syn_limit: { type: integer }
+        target_weight: { type: number, description: Target weight in kg }
+        maintenance_mode_enabled: { type: boolean }
+    FoodValueRequest:
+      type: object
+      required: [food_name, syn_value]
+      properties:
+        food_name: { type: string }
+        syn_value: { type: number }
+        notes: { type: string, nullable: true }
+        date:
+          type: string
+          format: date
+          nullable: true
+    WeightGraphPoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        weight: { type: number }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/ping:
+    get:
+      operationId: ping
+      summary: Health check (no auth)
+      security: []
+      responses:
+        '200':
+          description: Backend is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiOk'
+
+  /api/auth_echo:
+    get:
+      operationId: authEcho
+      summary: Echo whether Authorization header is present (debug)
+      responses:
+        '200':
+          description: Success; shows whether JWT was received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  hasAuth: { type: boolean }
+                  authPreview: { type: string }
+
+  /api/log_meal:
+    post:
+      operationId: logMeal
+      summary: Log a meal entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MealLogRequest'
+      responses:
+        '200':
+          description: Meal logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/log_weight:
+    post:
+      operationId: logWeight
+      summary: Log a weight entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeightLogRequest'
+      responses:
+        '200':
+          description: Weight logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/log_exercise:
+    post:
+      operationId: logExercise
+      summary: Log an exercise session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExerciseLogRequest'
+      responses:
+        '200':
+          description: Exercise logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/log_measurements:
+    post:
+      operationId: logMeasurements
+      summary: Log body measurements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementsRequest'
+      responses:
+        '200':
+          description: Measurements logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/user_goals:
+    post:
+      operationId: setUserGoal
+      summary: Set a user goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserGoalRequest'
+      responses:
+        '200':
+          description: Goal saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/update_user_settings:
+    patch:
+      operationId: updateUserSettings
+      summary: Update user settings (partial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsPatch'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/update_food_value:
+    post:
+      operationId: updateFoodValue
+      summary: Log or correct a Syn value for a food
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodValueRequest'
+      responses:
+        '200':
+          description: Syn value saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+
+  /api/weight_graph:
+    get:
+      operationId: getWeightGraph
+      summary: Get weight graph data points
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y, all]
+          description: Time window (default 30d)
+      responses:
+        '200':
+          description: Weight datapoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id: { type: string }
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WeightGraphPoint'
+        '401': { description: Unauthorized }
+
+  /api/user_profile:
+    get:
+      operationId: getUserProfile
+      summary: Get current user id from JWT
+      responses:
+        '200':
+          description: Current user id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserId'
+        '401': { description: Unauthorized }
