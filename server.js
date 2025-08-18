@@ -91,7 +91,9 @@ mountIfExists('/api/update_user_settings', './api/update_user_settings.js');
 mountIfExists('/api/update_food_value',    './api/update_food_value.js');
 mountIfExists('/api/weight_graph',         './api/weight_graph.js');
 mountIfExists('/api/user_profile',         './api/user_profile.js');
-mountIfExists('/api/auth_echo',            './api/auth_echo.js')
+mountIfExists('/api/auth_echo',            './api/auth_echo.js');
+mountIfExists('/api/env_check',            './api/env_check.js')
+
 
 // (Optional) if you also have a dedicated /api/ping router file:
 // mountIfExists('/api/ping',                 './api/ping.js');
