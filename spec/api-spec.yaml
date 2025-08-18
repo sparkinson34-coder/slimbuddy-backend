@@ -148,6 +148,23 @@ paths:
                   status: { type: string, example: ok }
                   message: { type: string, example: SlimBuddy API is alive }
                   timestamp: { type: string, example: "2025-08-13T08:31:47.302Z" }
+  /api/auth_echo:
+    get:
+      operationId: authEcho
+      summary: Echo back whether Authorization header is present
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  method: { type: string }
+                  path: { type: string }
+                  hasAuth: { type: boolean }
+                  authPreview: { type: string }
 
   /api/log_meal:
     post:
