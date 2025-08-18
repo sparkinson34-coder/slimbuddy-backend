@@ -1,12 +1,15 @@
 // server.js
 /**
- * SlimBuddy Backend (Express)
- * - Loads env vars
- * - Sets up CORS + JSON
- * - Mounts API routes (safe even if a route file is missing)
- * - Serves OpenAPI spec:
- *     /spec/api-spec.yaml  -> Basic Auth (humans)
- *     /spec/import.yaml    -> Public (GPT "Import from URL")
+ * SlimBuddy Backend — server.js
+ * -------------------------------------------------------------
+ * What this file does:
+ * 1) Loads env/config, boots an Express API with CORS+JSON.
+ * 2) Adds a tiny request-audit logger (method, path, status, ms).
+ * 3) Mounts every /api/* route (explicit .js file names).
+ * 4) Exposes a public OpenAPI import file + a Basic-Auth protected spec.
+ * 5) Provides /api/ping (health) and /healthz (infra health).
+ * 6) Finishes with 404 + error handlers and starts the server.
+ * -------------------------------------------------------------
  */
 
 require('dotenv').config();
@@ -16,58 +19,87 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const app = express(); // define app FIRST
+const app = express();
 
-// ---------- core middleware ----------
+/* -------------------------------------------------------------
+ * Core middleware
+ * ----------------------------------------------------------- */
 app.use(cors());
-app.use(express.json());
+app.use(express.json());           // parse application/json bodies
+app.set('trust proxy', true);      // correct client IPs if behind proxy
 
-// ---------- simple home route ----------
+/* -------------------------------------------------------------
+ * Tiny request audit (appears in Railway logs)
+ * ----------------------------------------------------------- */
+app.use((req, res, next) => {
+  const t0 = Date.now();
+  const auth = req.headers.authorization || '';
+  const briefAuth = auth ? auth.slice(0, 12) + '…' : '-';
+  res.on('finish', () => {
+    const ms = Date.now() - t0;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms) auth:${briefAuth}`
+    );
+  });
+  next();
+});
+
+/* -------------------------------------------------------------
+ * Simple home & health endpoints
+ * ----------------------------------------------------------- */
 app.get('/', (req, res) => {
   res.send('SlimBuddy API running!');
 });
 
-// ---------- safe route mounting helper ----------
-function mountIfExists(routePath, routerFile) {
-  const full = path.join(__dirname, routerFile);
-  if (fs.existsSync(full)) {
-    try {
-      app.use(routePath, require(full));
-      console.log(`Mounted ${routePath} from ${routerFile}`);
-    } catch (e) {
-      console.error(`Failed to mount ${routePath} (${routerFile}):`, e.message);
-    }
-  } else {
-    console.warn(`Skipped ${routePath}: ${routerFile} not found`);
+// Infra health (for uptime checks)
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true });
+});
+
+// API health (used by you for quick checks)
+app.get('/api/ping', (req, res) => {
+  res.json({ ok: true, message: 'SlimBuddy backend is alive!' });
+});
+
+/* -------------------------------------------------------------
+ * Helper to mount routers (with strong file resolution)
+ * - We pass explicit .js filenames, but also resolve safely.
+ * ----------------------------------------------------------- */
+function mountIfExists(routePath, routerRelFile) {
+  try {
+    const resolved = require.resolve(path.join(__dirname, routerRelFile));
+    // eslint-disable-next-line import/no-dynamic-require, global-require
+    const router = require(resolved);
+    app.use(routePath, router);
+    console.log(`Mounted ${routePath} from ${resolved}`);
+  } catch (e) {
+    console.warn(`Skipped ${routePath}: ${routerRelFile} (${e.message})`);
   }
 }
-// --- request audit (very light) ---
-app.use((req, res, next) => {
-  const started = Date.now();
-  const auth = req.headers.authorization || '';
-  const anon = auth ? auth.slice(0, 12) + '…' : '-';
-  res.on('finish', () => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now()-started}ms) auth:${anon}`);
-  });
-  next();
-});
-// ---------- mount API routes ----------
-mountIfExists('/api/log_meal', './api/log_meal');
-mountIfExists('/api/log_weight', './api/log_weight');
-mountIfExists('/api/log_exercise', './api/log_exercise');
-mountIfExists('/api/log_measurements', './api/log_measurements');
-mountIfExists('/api/user_goals', './api/user_goals');
-mountIfExists('/api/update_user_settings', './api/update_user_settings');
-mountIfExists('/api/update_food_value', './api/update_food_value');
-mountIfExists('/api/weight_graph', './api/weight_graph');     // optional
-mountIfExists('/api/user_profile', './api/user_profile');     // optional
-mountIfExists('/api/ping', './api/ping');
 
-// ---------- OpenAPI spec endpoints ----------
-/**
- * Basic Auth for human-readable spec
- * Uses env: SPEC_USER / SPEC_PASS
- */
+/* -------------------------------------------------------------
+ * Mount all API routes (EXPLICIT .js filenames)
+ *   IMPORTANT: Each router file must export an Express Router and
+ *   define handlers on '/', e.g. router.post('/')…
+ * ----------------------------------------------------------- */
+mountIfExists('/api/log_meal',             './api/log_meal.js');
+mountIfExists('/api/log_weight',           './api/log_weight.js');
+mountIfExists('/api/log_exercise',         './api/log_exercise.js');
+mountIfExists('/api/log_measurements',     './api/log_measurements.js');
+mountIfExists('/api/user_goals',           './api/user_goals.js');
+mountIfExists('/api/update_user_settings', './api/update_user_settings.js');
+mountIfExists('/api/update_food_value',    './api/update_food_value.js');
+mountIfExists('/api/weight_graph',         './api/weight_graph.js');
+mountIfExists('/api/user_profile',         './api/user_profile.js');
+// (Optional) if you also have a dedicated /api/ping router file:
+// mountIfExists('/api/ping',                 './api/ping.js');
+
+/* -------------------------------------------------------------
+ * OpenAPI spec endpoints
+ * - /spec/api-spec.yaml  (Basic Auth — SPEC_USER/SPEC_PASS)
+ * - /spec/import.yaml    (Public — used by GPT to import)
+ * ----------------------------------------------------------- */
+// Basic Auth only for the human-readable spec
 function specBasicAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Basic ')) {
@@ -85,37 +117,39 @@ function specBasicAuth(req, res, next) {
   return res.status(401).send('Invalid credentials');
 }
 
-// Human/teammate view (passworded)
-app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
-  res.type('text/yaml');
-  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
-});
-
-// Health check for uptime pings 
-app.get('/healthz', (req,res)=>res.json({ok:true}));
-
-// GPT importer (public; spec contains no secrets; runtime auth is via Bearer JWT)
+// Public import file for GPT (no auth)
 app.get('/spec/import.yaml', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.set('X-Content-Type-Options', 'nosniff');
-  res.type('text/yaml');
-  res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
+  const filePath = path.join(__dirname, 'spec', 'import.yaml');
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('spec/import.yaml not found');
+  }
+  res.type('text/yaml').send(fs.readFileSync(filePath, 'utf8'));
 });
 
-// Healthcheck / Ping
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true, message: 'SlimBuddy backend is alive!' });
+// Protected full OpenAPI (human/devs)
+app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
+  const filePath = path.join(__dirname, 'spec', 'api-spec.yaml');
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('spec/api-spec.yaml not found');
+  }
+  res.type('text/yaml').send(fs.readFileSync(filePath, 'utf8'));
 });
 
-// ---------- 404 + error handlers ----------
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+/* -------------------------------------------------------------
+ * 404 + error handlers (must be last)
+ * ----------------------------------------------------------- */
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Server error' });
 });
 
-// ---------- start server ----------
+/* -------------------------------------------------------------
+ * Start server
+ * ----------------------------------------------------------- */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`SlimBuddy API listening on port ${PORT}`);
