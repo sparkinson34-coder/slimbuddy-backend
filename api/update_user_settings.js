@@ -6,7 +6,7 @@
  * - Upserts into public.user_settings by PK user_id
  * - Casts numeric and boolean fields safely
  * - Updates `updated_at` on every save
- *
+ */
 
 'use strict';
 const express = require('express');
