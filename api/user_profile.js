@@ -11,14 +11,11 @@ const express = require('express');
 const router = express.Router();
 const secureRoute = require('../lib/authMiddleware');
 
-/**
- * ✅ User Profile (helper)
- * Returns the authenticated user's id (from JWT)
- */
+/** ✅ Returns authenticated user_id from JWT */
 router.get('/', secureRoute, async (req, res) => {
   const user_id = req.user?.id;
-  if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
-  return res.json({ user_id });
+  if (!user_id) return res.status(401).json({ error:'Unauthorized' });
+  res.json({ user_id });
 });
 
 module.exports = router;

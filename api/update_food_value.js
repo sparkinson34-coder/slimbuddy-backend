@@ -12,40 +12,20 @@ const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
-/**
- * ✅ Update/Log food Syn value
- * Body: { food_name (string), syns (number), date (optional, defaults to today), notes (optional) }
- * Saves in syn_values
- */
+/** ✅ Update/log food Syn value */
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id;
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
-
+    const user_id = req.user?.id; if (!user_id) return res.status(401).json({ error:'Unauthorized' });
     const { food_name, syn_value, notes, date } = req.body || {};
-    if (!food_name || typeof food_name !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid food_name.' });
-    }
-    if (syn_value == null || isNaN(Number(syn_value))) {
-      return res.status(400).json({ error: 'Missing or invalid syn_value.' });
-    }
+    if (!food_name) return res.status(400).json({ error:'Missing food_name' });
+    if (syn_value==null || isNaN(Number(syn_value))) return res.status(400).json({ error:'Invalid syn_value' });
 
     const d = date ? normalizeDate(date) : null;
+    const { data, error } = await supabase.from('syn_values').insert([{ user_id, food_name, syn_value: Number(syn_value), notes: notes ?? null, date: d }]).select();
+    if (error) { console.error('[update_food_value] DB:', error.message); return res.status(500).json({ error:'Database error' }); }
 
-    const { data, error } = await supabase
-      .from('syn_values')
-      .insert([{ user_id, food_name, syn_value: Number(syn_value), notes: notes ?? null, date: d }])
-      .select();
-
-    if (error) {
-      console.error('[update_food_value] supabase error:', error.message);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    return res.json({ message: '✅ Syn value logged successfully', data });
-  } catch (err) {
-    console.error('update_food_value error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
+    res.json({ message:'✅ Syn value logged successfully', data });
+  } catch (err) { console.error('update_food_value exception:', err); res.status(500).json({ error:'Server error' }); }
 });
 
 module.exports = router;

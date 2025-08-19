@@ -10,18 +10,9 @@
 const express = require('express');
 const router = express.Router();
 
-/**
- * ✅ Ping API (public)
- * Confirms the API is alive. No auth required.
- */
+/** ✅ Health check (no auth) */
 router.get('/', (_req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'SlimBuddy API is alive',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ ok: true, message: 'SlimBuddy backend is alive!', timestamp: new Date().toISOString() });
 });
 
 module.exports = router;
-
-

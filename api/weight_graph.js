@@ -13,15 +13,10 @@ const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
-/**
- * ✅ Weight Graph Data API
- * - Query: ?start=YYYY-MM-DD&end=YYYY-MM-DD  (defaults to last 30 days)
- * - Returns [{date, weight}] sorted asc
- */
+/** ✅ Weight graph data; defaults last 30 days, accepts ?start & ?end */
 router.get('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id;
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+    const user_id = req.user?.id; if (!user_id) return res.status(401).json({ error:'Unauthorized' });
 
     let { start, end } = req.query;
     start = normalizeDate(start);
@@ -29,11 +24,7 @@ router.get('/', secureRoute, async (req, res) => {
 
     const today = new Date();
     if (!end) end = today.toISOString().slice(0, 10);
-    if (!start) {
-      const past = new Date(today);
-      past.setDate(today.getDate() - 30);
-      start = past.toISOString().slice(0, 10);
-    }
+    if (!start) { const past = new Date(today); past.setDate(today.getDate()-30); start = past.toISOString().slice(0,10); }
 
     const { data, error } = await supabase
       .from('weight_logs')
@@ -43,15 +34,9 @@ router.get('/', secureRoute, async (req, res) => {
       .lte('date', end)
       .order('date', { ascending: true });
 
-    if (error) {
-      console.error('[weight_graph] supabase error:', error.message);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    return res.json({ user_id, data: data || [] });
-  } catch (err) {
-    console.error('weight_graph error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
+    if (error) { console.error('[weight_graph] DB:', error.message); return res.status(500).json({ error:'Database error' }); }
+    res.json({ user_id, data: data || [] });
+  } catch (err) { console.error('weight_graph exception:', err); res.status(500).json({ error:'Server error' }); }
 });
 
 module.exports = router;

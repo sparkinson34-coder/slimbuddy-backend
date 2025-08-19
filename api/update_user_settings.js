@@ -14,31 +14,16 @@ const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-/**
- * ✅ Update User Settings (PATCH upsert by user_id)
- * Accepts any subset of:
- * preferred_name, tone, preferred_weight_unit, diet_preference,
- * food_allergies, food_dislikes, typical_day,
- * healthy_extra_a, healthy_extra_b,
- * syn_limit(number), target_weight(number, kg),
- * maintenance_mode_enabled(boolean)
- */
-function toNum(v){ if(v===null||v===undefined||v==='') return null; const n=Number(v); return Number.isFinite(n)?n:null; }
-function toBool(v){
-  if (typeof v==='boolean') return v;
-  if (typeof v==='string') {
-    const s=v.trim().toLowerCase();
-    if (['true','1','yes','y'].includes(s)) return true;
-    if (['false','0','no','n'].includes(s)) return false;
-  }
-  if (typeof v==='number') return v!==0;
-  return null;
-}
+/** ✅ Update user settings (PATCH upsert by user_id) */
+const toNum = v => (v===null||v===undefined||v==='') ? null : (Number.isFinite(Number(v)) ? Number(v) : null);
+const toBool = v => (typeof v==='boolean') ? v :
+  (typeof v==='string' ? ['true','1','yes','y'].includes(v.trim().toLowerCase()) ? true :
+                          ['false','0','no','n'].includes(v.trim().toLowerCase()) ? false : null
+                        : (typeof v==='number' ? v!==0 : null));
 
 router.patch('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user?.id;
-    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+    const user_id = req.user?.id; if (!user_id) return res.status(401).json({ error:'Unauthorized' });
 
     const allowed = {
       preferred_name: v => v ?? null,
@@ -58,27 +43,15 @@ router.patch('/', secureRoute, async (req, res) => {
     const updates = { user_id, updated_at: new Date().toISOString() };
     let changed = false;
     for (const [k, cast] of Object.entries(allowed)) {
-      if (Object.prototype.hasOwnProperty.call(req.body, k)) {
-        updates[k] = cast(req.body[k]);
-        changed = true;
-      }
+      if (Object.prototype.hasOwnProperty.call(req.body, k)) { updates[k] = cast(req.body[k]); changed = true; }
     }
-    if (!changed) return res.status(400).json({ error: 'No valid fields provided.' });
+    if (!changed) return res.status(400).json({ error:'No valid fields provided' });
 
-    const { data, error } = await supabase
-      .from('user_settings')
-      .upsert(updates, { onConflict: 'user_id' })
-      .select();
+    const { data, error } = await supabase.from('user_settings').upsert(updates, { onConflict: 'user_id' }).select();
+    if (error) { console.error('[update_user_settings] DB:', error.message); return res.status(500).json({ error:'Database error' }); }
 
-    if (error) {
-      console.error('[update_user_settings] supabase error:', error.message);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    return res.json({ message: '✅ User settings saved', data });
-  } catch (err) {
-    console.error('update_user_settings error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
+    res.json({ message:'✅ User settings saved', data });
+  } catch (err) { console.error('update_user_settings exception:', err); res.status(500).json({ error:'Server error' }); }
 });
 
 module.exports = router;
