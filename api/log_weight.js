@@ -8,6 +8,13 @@
  * - If date is not provided, defaults to today (YYYY-MM-DD)
  * - Returns the inserted record for confirmation
  */
+
+// Handler so we can see the resolved user
+router.post('/', secureRoute, async (req, res) => {
+  console.log('[log_weight] user_id:', req.user?.id); // ⬅️ DEBUG
+  // …rest of your code…
+});
+
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
