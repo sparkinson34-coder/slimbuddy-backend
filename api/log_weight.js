@@ -2,42 +2,41 @@
 /**
  * ✅ Weight Logging API
  * - Inserts a weight record for the authenticated user into weight_logs
- * - Accepts units in kg, lbs, or st_lbs (stones + pounds) and converts to kg
- * - Fields: weight (or stones+pounds), unit, date, notes
- * - Reads user_id from the JWT (secureRoute)
  * - If date is not provided, defaults to today (YYYY-MM-DD)
  * - Returns the inserted record for confirmation
  */
 
-// Handler so we can see the resolved user
-router.post('/', secureRoute, async (req, res) => {
-  console.log('[log_weight] user_id:', req.user?.id); // ⬅️ DEBUG
-  // …rest of your code…
-});
-
+'use strict';
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
+/**
+ * ✅ Weight Logging API
+ * - Accepts kg | lbs | st_lbs and stores kg
+ * - Body: { date?, unit, weight?, stones?, pounds?, notes? }
+ * - Reads user_id from JWT via secureRoute
+ */
 function lbsToKg(lbs) {
   const n = Number(lbs);
   return Number.isFinite(n) ? +(n * 0.45359237).toFixed(2) : null;
 }
-function stLbsToKg(stones, pounds = 0) {
-  const st = Number(stones) || 0;
-  const lb = Number(pounds) || 0;
-  return +((st * 14 + lb) * 0.45359237).toFixed(2);
+function stLbsToKg(st, lb = 0) {
+  const s = Number(st) || 0;
+  const p = Number(lb) || 0;
+  return +((s * 14 + p) * 0.45359237).toFixed(2);
 }
 
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user.id;
-    const { weight, unit, stones, pounds, date, notes } = req.body;
+    const user_id = req.user?.id;
+    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
 
+    const { unit, weight, stones, pounds, date, notes } = req.body || {};
     if (!unit || !['kg', 'lbs', 'st_lbs'].includes(unit)) {
-      return res.status(400).json({ error: 'Missing or invalid unit (kg | lbs | st_lbs).' });
+      return res.status(400).json({ error: "Missing or invalid unit (kg|lbs|st_lbs)." });
     }
 
     let weightKg = null;
@@ -52,7 +51,7 @@ router.post('/', secureRoute, async (req, res) => {
       if (stones == null) return res.status(400).json({ error: 'Missing stones for st_lbs.' });
       weightKg = stLbsToKg(stones, pounds);
     }
-    if (weightKg == null || Number.isNaN(weightKg)) {
+    if (!Number.isFinite(weightKg) || weightKg <= 0) {
       return res.status(400).json({ error: 'Invalid target weight after conversion.' });
     }
 
@@ -60,15 +59,19 @@ router.post('/', secureRoute, async (req, res) => {
 
     const { data, error } = await supabase
       .from('weight_logs')
-      .insert([{ user_id, date: d, weight: weightKg, unit: 'kg', notes: notes || null }])
+      .insert([{ user_id, date: d, weight: weightKg, unit: 'kg', notes: notes ?? null }])
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[log_weight] supabase error:', error.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
     return res.json({ message: '✅ Weight logged successfully', data });
   } catch (err) {
     console.error('log_weight error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
 module.exports = router;
+

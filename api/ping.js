@@ -6,11 +6,15 @@
  * - Returns a basic status response
  */
 
+'use strict';
 const express = require('express');
 const router = express.Router();
 
-// ✅ No authentication required for uptime checks
-router.get('/', (req, res) => {
+/**
+ * ✅ Ping API (public)
+ * Confirms the API is alive. No auth required.
+ */
+router.get('/', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'SlimBuddy API is alive',
@@ -19,3 +23,5 @@ router.get('/', (req, res) => {
 });
 
 module.exports = router;
+
+

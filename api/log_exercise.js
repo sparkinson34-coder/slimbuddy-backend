@@ -7,15 +7,25 @@
  * - If date is not provided, defaults to today (YYYY-MM-DD)
  * - Returns the inserted record for confirmation
  */
+'use strict';
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
+/**
+ * ✅ Exercise Logging API
+ * - Fields: activity*, duration_minutes?, intensity?, calories_burned?, steps?, distance_km?, date?, notes?
+ * - Saves to exercise_logs
+ */
+function num(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user.id;
+    const user_id = req.user?.id;
+    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+
     const {
       activity,
       duration_minutes,
@@ -25,7 +35,7 @@ router.post('/', secureRoute, async (req, res) => {
       distance_km,
       date,
       notes
-    } = req.body;
+    } = req.body || {};
 
     if (!activity || typeof activity !== 'string') {
       return res.status(400).json({ error: 'Missing required field: activity.' });
@@ -35,23 +45,25 @@ router.post('/', secureRoute, async (req, res) => {
 
     const payload = {
       user_id,
-      activity,
-      duration_minutes: Number.isFinite(Number(duration_minutes)) ? Number(duration_minutes) : null,
-      intensity: intensity || null,
-      calories_burned: Number.isFinite(Number(calories_burned)) ? Number(calories_burned) : null,
-      steps: Number.isFinite(Number(steps)) ? Number(steps) : null,
-      distance_km: Number.isFinite(Number(distance_km)) ? Number(distance_km) : null,
       date: d,
-      notes: notes || null
+      activity,
+      duration_minutes: num(duration_minutes),
+      intensity: intensity ?? null,
+      calories_burned: num(calories_burned),
+      steps: num(steps),
+      distance_km: num(distance_km),
+      notes: notes ?? null
     };
 
     const { data, error } = await supabase.from('exercise_logs').insert([payload]).select();
-    if (error) throw error;
-
+    if (error) {
+      console.error('[log_exercise] supabase error:', error.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
     return res.json({ message: '✅ Exercise logged successfully', data });
   } catch (err) {
     console.error('log_exercise error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

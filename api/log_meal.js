@@ -1,28 +1,36 @@
 // api/log_meal.js
 /**
- * ✅ Log Meal API
+ * ✅ Log Meal
  * - Reads user_id from JWT (secureRoute)
- * - Fields:
- *   - date (optional; defaults to today; accepts DD/MM/YYYY, DD-MM-YYYY, or YYYY-MM-DD)
- *   - meal_description (required, string)
- *   - syns (required, number)
- *   - calories (optional, number — only if column exists in table)
  *   - notes (optional)
- * - Inserts into meal_logs and returns the inserted row
  */
-
+'use strict';
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
+/**
+ * ✅ Log Meal API
+ * - Body: { date?, meal_description*, syns*, calories?, healthy_extra_a_used?, healthy_extra_b_used?, notes? }
+ * - Saves to meal_logs; returns inserted row
+ */
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user.id;
-    const { date, meal_description, syns, calories, notes } = req.body;
+    const user_id = req.user?.id;
+    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Validate required fields
+    const {
+      date,
+      meal_description,
+      syns,
+      calories,
+      healthy_extra_a_used,
+      healthy_extra_b_used,
+      notes
+    } = req.body || {};
+
     if (!meal_description || typeof meal_description !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid meal_description.' });
     }
@@ -30,37 +38,28 @@ router.post('/', secureRoute, async (req, res) => {
       return res.status(400).json({ error: 'Missing or invalid syns.' });
     }
 
-    // Date normalization
-    const mealDate = date ? normalizeDate(date) : new Date().toISOString().split('T')[0];
-    if (!mealDate) {
-      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY.' });
-    }
+    const mealDate = normalizeDate(date) || new Date().toISOString().slice(0, 10);
 
-    // Build insert object
-    const mealEntry = {
+    const entry = {
       user_id,
       date: mealDate,
       meal_description,
       syns: Number(syns),
-      notes: notes || null
+      calories: calories != null && !isNaN(Number(calories)) ? Number(calories) : null,
+      healthy_extra_a_used: !!healthy_extra_a_used,
+      healthy_extra_b_used: !!healthy_extra_b_used,
+      notes: notes ?? null
     };
 
-    // Add calories only if provided and valid
-    if (calories != null && !isNaN(Number(calories))) {
-      mealEntry.calories = Number(calories);
+    const { data, error } = await supabase.from('meal_logs').insert([entry]).select();
+    if (error) {
+      console.error('[log_meal] supabase error:', error.message);
+      return res.status(500).json({ error: 'Database error' });
     }
-
-    const { data, error } = await supabase
-      .from('meal_logs')
-      .insert([mealEntry])
-      .select();
-
-    if (error) throw error;
-
     return res.json({ message: '✅ Meal logged successfully', data });
   } catch (err) {
     console.error('log_meal error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

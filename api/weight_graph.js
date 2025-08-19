@@ -6,17 +6,24 @@
  * - Accepts start/end query params; defaults to last 30 days if not provided
  * - Dates run through normalizeDate to allow DD-MM-YYYY input
  */
+'use strict';
 const express = require('express');
 const router = express.Router();
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
+/**
+ * ✅ Weight Graph Data API
+ * - Query: ?start=YYYY-MM-DD&end=YYYY-MM-DD  (defaults to last 30 days)
+ * - Returns [{date, weight}] sorted asc
+ */
 router.get('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user.id;
-    let { start, end } = req.query;
+    const user_id = req.user?.id;
+    if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
 
+    let { start, end } = req.query;
     start = normalizeDate(start);
     end = normalizeDate(end);
 
@@ -36,11 +43,14 @@ router.get('/', secureRoute, async (req, res) => {
       .lte('date', end)
       .order('date', { ascending: true });
 
-    if (error) throw error;
-    return res.json({ user_id, data });
+    if (error) {
+      console.error('[weight_graph] supabase error:', error.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    return res.json({ user_id, data: data || [] });
   } catch (err) {
     console.error('weight_graph error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
