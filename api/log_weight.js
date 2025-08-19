@@ -1,77 +1,40 @@
-// api/log_weight.js
 /**
- * ✅ Weight Logging API
- * - Inserts a weight record for the authenticated user into weight_logs
- * - If date is not provided, defaults to today (YYYY-MM-DD)
- * - Returns the inserted record for confirmation
+ * Route: /api/log_weight
+ * Purpose: Insert a new weight log entry for the authenticated user.
+ *
+ * Notes:
+ * - Requires Authorization header with "Bearer <JWT>".
+ * - Expects JSON body with: { date, weight, unit, notes }
+ * - Saves to "weight_logs" table in Supabase.
+ * - Debug mode: If request includes header "X-Debug: true",
+ *   then detailed error info from Supabase will be returned.
  */
-'use strict';
 
 const express = require('express');
 const router = express.Router();
-
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 const { normalizeDate } = require('../lib/date');
 
-/**
- * ✅ Log Weight Route
- * 
- * POST /api/log_weight
- * 
- * Body options:
- *   { date, weight, unit: "kg"|"lbs", notes? }
- *   { date, unit:"st_lbs", stones, pounds?, notes? }
- *
- * Converts weight into kilograms for storage.
- * Stored in: weight_logs(user_id, date, weight (kg), unit, notes)
- */
+// POST /api/log_weight
 router.post('/', secureRoute, async (req, res) => {
   try {
-    const user_id = req.user.id;
-    let { date, weight, unit, stones, pounds, notes } = req.body || {};
+    const userId = req.user.id; // from authMiddleware
+    const { date, weight, unit, notes } = req.body;
 
-    // Normalize date or default to today
-    date = normalizeDate(date);
-
-    // Validate unit
-    if (!unit || !['kg', 'lbs', 'st_lbs'].includes(unit)) {
-      return res.status(400).json({ error: 'Invalid or missing unit (kg, lbs, st_lbs)' });
+    if (!date || !weight) {
+      return res.status(400).json({ error: 'Date and weight are required' });
     }
 
-    let weightKg;
+    // Normalize date into YYYY-MM-DD
+    const normalizedDate = normalizeDate(date);
 
-    if (unit === 'kg') {
-      if (typeof weight !== 'number') {
-        return res.status(400).json({ error: 'Missing/invalid weight for kg' });
-      }
-      weightKg = weight;
-
-    } else if (unit === 'lbs') {
-      if (typeof weight !== 'number') {
-        return res.status(400).json({ error: 'Missing/invalid weight for lbs' });
-      }
-      weightKg = weight * 0.45359237;
-
-    } else {
-      // unit === 'st_lbs'
-      if (typeof stones !== 'number') {
-        return res.status(400).json({ error: 'Missing stones for st_lbs' });
-      }
-      const lbsTotal = (stones * 14) + (typeof pounds === 'number' ? pounds : 0);
-      weightKg = lbsTotal * 0.45359237;
-    }
-
-    // Round to 2 decimal places
-    weightKg = Math.round(weightKg * 100) / 100;
-
-    // Build record
     const insert = {
-      user_id,
-      date,
-      weight: weightKg,
-      unit,      // keep original unit for reference
-      notes: notes || null
+      user_id: userId,
+      date: normalizedDate,
+      weight: parseFloat(weight),
+      unit: unit || 'kg',
+      notes: notes || null,
     };
 
     // Insert into supabase
@@ -82,16 +45,39 @@ router.post('/', secureRoute, async (req, res) => {
 
     if (error) {
       console.error('log_weight insert error:', error);
+
+      // Debug output if client explicitly requests it
+      if (req.headers['x-debug'] === 'true') {
+        return res.status(500).json({
+          error: 'Server error inserting weight log',
+          debug: {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          },
+        });
+      }
+
       return res.status(500).json({ error: 'Server error inserting weight log' });
     }
 
-    return res.json({
-      message: '✅ Weight logged successfully',
-      data
+    res.json({
+      ok: true,
+      message: 'Weight log saved successfully',
+      entry: data[0],
     });
+
   } catch (err) {
-    console.error('log_weight fatal error:', err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('Unexpected error in log_weight:', err);
+
+    if (req.headers['x-debug'] === 'true') {
+      return res.status(500).json({
+        error: 'Unexpected server error',
+        debug: { message: err.message, stack: err.stack },
+      });
+    }
+
+    res.status(500).json({ error: 'Unexpected server error' });
   }
 });
 
