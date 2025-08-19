@@ -1,208 +1,11 @@
-openapi: 3.0.0
+openapi: 3.1.1
 info:
-  title: SlimBuddy API
+  title: SlimBuddy API (Minimal Test)
   version: 1.0.0
-  description: API routes for SlimBuddy backend
+  description: Minimal spec to validate GPT import + bearerAuth
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
-
-paths:
-  /api/ping:
-    get:
-      summary: Ping the backend
-      responses:
-        '200':
-          description: Backend is alive
-
-  /api/auth_echo:
-    get:
-      summary: Echo back the user token for testing
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Echoed user token
-
-  /api/log_weight:
-    post:
-      summary: Log a new weight entry
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
-                weight:
-                  type: number
-                unit:
-                  type: string
-                  enum: [kg, lbs, stone]
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Weight logged successfully
-
-  /api/log_meal:
-    post:
-      summary: Log a meal
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
-                meal_type:
-                  type: string
-                description:
-                  type: string
-                calories:
-                  type: number
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Meal logged successfully
-
-  /api/log_exercise:
-    post:
-      summary: Log exercise activity
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
-                activity:
-                  type: string
-                duration:
-                  type: number
-                calories_burned:
-                  type: number
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Exercise logged successfully
-
-  /api/log_measurements:
-    post:
-      summary: Log body measurements
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                date:
-                  type: string
-                  format: date
-                chest:
-                  type: number
-                waist:
-                  type: number
-                hips:
-                  type: number
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: Measurements logged successfully
-
-  /api/user_goals:
-    get:
-      summary: Retrieve user goals
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: User goals retrieved successfully
-
-  /api/update_user_settings:
-    post:
-      summary: Update user settings
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                notifications_enabled:
-                  type: boolean
-      responses:
-        '200':
-          description: Settings updated successfully
-
-  /api/update_food_value:
-    post:
-      summary: Update food item nutritional value
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                food_name:
-                  type: string
-                calories:
-                  type: number
-                protein:
-                  type: number
-                fat:
-                  type: number
-                carbs:
-                  type: number
-      responses:
-        '200':
-          description: Food value updated successfully
-
-  /api/weight_graph:
-    get:
-      summary: Get weight graph data
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Weight graph retrieved successfully
-
-  /api/user_profile:
-    get:
-      summary: Get user profile
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: User profile retrieved successfully
 
 components:
   securitySchemes:
@@ -210,3 +13,81 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    SimpleOk:
+      type: object
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
+    EchoResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        user:
+          type: object
+          properties:
+            id: { type: string }
+            email: { type: string, nullable: true }
+    LogWeightRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        date: { type: string, description: "YYYY-MM-DD or human-friendly; server normalizes" }
+        weight: { type: number, description: "If unit=kg or lbs" }
+        unit: { type: string, enum: [kg, lbs, st_lbs] }
+        stones: { type: number, description: "If unit=st_lbs" }
+        pounds: { type: number, description: "If unit=st_lbs (optional)" }
+        notes: { type: string }
+      required: [unit]
+
+paths:
+  /api/ping:
+    get:
+      summary: Health check
+      operationId: ping
+      responses:
+        '200':
+          description: Backend OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOk'
+
+  /api/auth_echo:
+    get:
+      summary: Verify auth and echo user
+      operationId: authEcho
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Echoed user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EchoResponse'
+        '401':
+          description: Unauthorized
+
+  /api/log_weight:
+    post:
+      summary: Log a weight entry
+      operationId: logWeight
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogWeightRequest'
+      responses:
+        '200':
+          description: Weight logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOk'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
