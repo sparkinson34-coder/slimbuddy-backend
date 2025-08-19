@@ -1,199 +1,111 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
-  title: SlimBuddy Backend API (Actions)
-  version: "1.0.0"
-  description: >
-    SlimBuddy API hosted on Railway. All endpoints (except /api/ping) require a Bearer JWT token.
+  title: SlimBuddy API
+  version: 1.0.0
+  description: API routes for SlimBuddy backend
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-    Date:
-      type: string
-      format: date
-      example: "2025-08-18"
-
-    LogWeightRequest:
-      type: object
-      required: [unit]
-      properties:
-        date: { $ref: '#/components/schemas/Date' }
-        unit:
-          type: string
-          enum: [kg, lbs, st_lbs]
-        weight:
-          type: number
-          description: Required if unit is kg or lbs.
-          example: 82.4
-        stones:
-          type: number
-          description: Required if unit is st_lbs.
-          example: 12
-        pounds:
-          type: number
-          description: Optional fractional pounds for st_lbs.
-          example: 7.5
-        notes:
-          type: string
-          example: "Morning weigh-in"
-    LogMealRequest:
-      type: object
-      required: [meal_description, syns]
-      properties:
-        date: { $ref: '#/components/schemas/Date' }
-        meal_description: { type: string, example: "Chicken stir fry" }
-        syns: { type: number, example: 4.5 }
-        calories: { type: number, nullable: true, example: 420 }
-        healthy_extra_a_used: { type: boolean, example: false }
-        healthy_extra_b_used: { type: boolean, example: false }
-        notes: { type: string, nullable: true }
-    LogExerciseRequest:
-      type: object
-      required: [activity]
-      properties:
-        date: { $ref: '#/components/schemas/Date' }
-        activity: { type: string, example: "Walking" }
-        duration_minutes: { type: number, nullable: true, example: 45 }
-        intensity: { type: string, nullable: true, example: "Moderate" }
-        calories_burned: { type: number, nullable: true, example: 300 }
-        steps: { type: number, nullable: true, example: 7500 }
-        distance_km: { type: number, nullable: true, example: 5.2 }
-        notes: { type: string, nullable: true }
-    LogMeasurementsRequest:
-      type: object
-      properties:
-        date: { $ref: '#/components/schemas/Date' }
-        bust: { type: number, nullable: true }
-        waist: { type: number, nullable: true }
-        hips: { type: number, nullable: true }
-        thighs: { type: number, nullable: true }
-        neck: { type: number, nullable: true }
-        arm: { type: number, nullable: true }
-        under_bust: { type: number, nullable: true }
-        knees: { type: number, nullable: true }
-        ankles: { type: number, nullable: true }
-        notes: { type: string, nullable: true }
-    UserGoalRequest:
-      type: object
-      required: [goal_type, unit]
-      properties:
-        goal_type: { type: string, example: "weight_loss" }
-        unit:
-          type: string
-          enum: [kg, lbs, st_lbs]
-        target_value:
-          type: number
-          description: Required if unit is kg or lbs.
-          example: 72.5
-        stones:
-          type: number
-          description: Required if unit is st_lbs.
-          example: 11
-        pounds:
-          type: number
-          description: Optional fractional pounds for st_lbs.
-          example: 4
-        target_date:
-          $ref: '#/components/schemas/Date'
-    UpdateUserSettingsRequest:
-      type: object
-      properties:
-        preferred_name: { type: string, nullable: true }
-        tone: { type: string, nullable: true }
-        preferred_weight_unit: { type: string, nullable: true, enum: [kg, lbs, st_lbs] }
-        diet_preference: { type: string, nullable: true }
-        food_allergies: { type: string, nullable: true }
-        food_dislikes: { type: string, nullable: true }
-        typical_day: { type: string, nullable: true }
-        healthy_extra_a: { type: string, nullable: true }
-        healthy_extra_b: { type: string, nullable: true }
-        syn_limit: { type: number, nullable: true }
-        target_weight: { type: number, nullable: true, description: "Stored in kg." }
-        maintenance_mode_enabled: { type: boolean, nullable: true }
-
-    UpdateFoodValueRequest:
-      type: object
-      required: [food_name, syn_value]
-      properties:
-        food_name: { type: string, example: "Weetabix Minis - Chocolate" }
-        syn_value: { type: number, example: 6 }
-        notes: { type: string, nullable: true }
-        date: { $ref: '#/components/schemas/Date' }
-
 paths:
   /api/ping:
     get:
-      operationId: ping
-      summary: Health check
-      description: Returns basic health status. No auth required.
+      summary: Ping the backend
       responses:
         '200':
-          description: OK
+          description: Backend is alive
 
   /api/auth_echo:
     get:
-      operationId: authEcho
-      summary: Echo Authorization header presence
-      description: Confirms Bearer header is sent; useful for consent/connect debugging.
+      summary: Echo back the user token for testing
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: OK
+          description: Echoed user token
 
   /api/log_weight:
     post:
-      operationId: logWeight
-      summary: Log weight (stored as kg)
+      summary: Log a new weight entry
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LogWeightRequest' }
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                weight:
+                  type: number
+                unit:
+                  type: string
+                  enum: [kg, lbs, stone]
+                notes:
+                  type: string
       responses:
-        '200': { description: Logged }
+        '200':
+          description: Weight logged successfully
 
   /api/log_meal:
     post:
-      operationId: logMeal
-      summary: Log meal
+      summary: Log a meal
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LogMealRequest' }
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                meal_type:
+                  type: string
+                description:
+                  type: string
+                calories:
+                  type: number
+                notes:
+                  type: string
       responses:
-        '200': { description: Logged }
+        '200':
+          description: Meal logged successfully
 
   /api/log_exercise:
     post:
-      operationId: logExercise
-      summary: Log exercise
+      summary: Log exercise activity
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LogExerciseRequest' }
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                activity:
+                  type: string
+                duration:
+                  type: number
+                calories_burned:
+                  type: number
+                notes:
+                  type: string
       responses:
-        '200': { description: Logged }
+        '200':
+          description: Exercise logged successfully
 
   /api/log_measurements:
     post:
-      operationId: logMeasurements
       summary: Log body measurements
       security:
         - bearerAuth: []
@@ -201,77 +113,100 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LogMeasurementsRequest' }
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                chest:
+                  type: number
+                waist:
+                  type: number
+                hips:
+                  type: number
+                notes:
+                  type: string
       responses:
-        '200': { description: Logged }
+        '200':
+          description: Measurements logged successfully
 
   /api/user_goals:
-    post:
-      operationId: setUserGoal
-      summary: Set user goal (target in kg)
+    get:
+      summary: Retrieve user goals
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UserGoalRequest' }
       responses:
-        '200': { description: Saved }
+        '200':
+          description: User goals retrieved successfully
 
   /api/update_user_settings:
-    patch:
-      operationId: updateUserSettings
-      summary: Update user settings (upsert by user_id)
+    post:
+      summary: Update user settings
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UpdateUserSettingsRequest' }
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                notifications_enabled:
+                  type: boolean
       responses:
-        '200': { description: Saved }
+        '200':
+          description: Settings updated successfully
 
   /api/update_food_value:
     post:
-      operationId: updateFoodValue
-      summary: Update/log custom food Syn value
+      summary: Update food item nutritional value
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UpdateFoodValueRequest' }
+            schema:
+              type: object
+              properties:
+                food_name:
+                  type: string
+                calories:
+                  type: number
+                protein:
+                  type: number
+                fat:
+                  type: number
+                carbs:
+                  type: number
       responses:
-        '200': { description: Saved }
+        '200':
+          description: Food value updated successfully
 
   /api/weight_graph:
     get:
-      operationId: getWeightGraph
-      summary: Get weight series (date/weight)
+      summary: Get weight graph data
       security:
         - bearerAuth: []
-      parameters:
-        - in: query
-          name: start
-          required: false
-          schema: { $ref: '#/components/schemas/Date' }
-          description: Inclusive start date (YYYY-MM-DD). Defaults to 30 days ago.
-        - in: query
-          name: end
-          required: false
-          schema: { $ref: '#/components/schemas/Date' }
-          description: Inclusive end date (YYYY-MM-DD). Defaults to today.
       responses:
-        '200': { description: OK }
+        '200':
+          description: Weight graph retrieved successfully
 
   /api/user_profile:
     get:
-      operationId: getUserProfile
-      summary: Get authenticated user_id
+      summary: Get user profile
       security:
         - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200':
+          description: User profile retrieved successfully
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
