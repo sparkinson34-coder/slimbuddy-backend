@@ -1,19 +1,14 @@
-// api/auth_echo.js
-/**
- * ✅ Auth Echo (public)
- * Confirms GPT is actually attaching a Bearer token.
- * NEVER hits Supabase or DB; just reflects header presence.
- */
-'use strict';
-
-const express = require('express');
-const router = express.Router();
-
 /**
  * ✅ Auth Echo (public)
  * Confirms the Authorization header is present and previews it (safe).
  * Does not touch the DB. Useful for GPT “Allow/Connect” troubleshooting.
  */
+
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+
 router.get('/', (req, res) => {
   const raw = req.headers.authorization || '';
   res.json({
