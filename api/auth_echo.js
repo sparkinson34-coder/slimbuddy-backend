@@ -5,17 +5,12 @@
  */
 
 'use strict';
-
 const express = require('express');
 const router = express.Router();
+const secureRoute = require('../lib/authMiddleware');
 
-router.get('/', (req, res) => {
-  const raw = req.headers.authorization || '';
-  res.json({
-    ok: true,
-    hasAuth: Boolean(raw),
-    authPreview: raw ? raw.slice(0, 24) + '…' : '(none)'
-  });
+router.get('/', secureRoute, (req, res) => {
+  res.json({ ok: true, user: req.user });
 });
 
 module.exports = router;

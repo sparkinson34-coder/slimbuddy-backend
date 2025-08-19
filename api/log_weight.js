@@ -19,6 +19,11 @@ const { normalizeDate } = require('../lib/date');
 // POST /api/log_weight
 router.post('/', secureRoute, async (req, res) => {
   try {
+    // ✅ Guard: ensure middleware attached a user
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Unauthorized (no user in request)' });
+    }
+
     const userId = req.user.id; // from authMiddleware
     const { date, weight, unit, notes } = req.body;
 
