@@ -1,26 +1,38 @@
-/** /api/connect.js/**
- * ✅ Connect API
- * POST /api/connect/issue  → returns a short Connect Key for the signed-in user
+// /api/connect.js
+/**
+ * ✅ Issue short-lived "Connect Key" for GPT
+ * - Requires Authorization: Bearer <Supabase access_token>
+ * - Revokes any previous active key for the user
+ * - Returns plaintext connect_key; stores only a hash in DB
  */
 const express = require('express');
-const router = express.Router();
-const secureRoute = require('../lib/authMiddleware');
-const supabase = require('../lib/supabaseClient');
+const crypto = require('crypto');
 
-// Simple key generator: SB-XXXX-XXX-X-XXXX
-function genKey() {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const chunk = (n) =>
-    Array.from({ length: n }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
-  return `SB-${chunk(4)}-${chunk(3)}-${chunk(1)}-${chunk(4)}`;
+const supabase = require('../lib/supabaseClient');
+const secureRoute = require('../lib/authMiddleware');
+
+const router = express.Router();
+
+function generateKey() {
+  // SB-XXXX-XXX-X-XXXX (alphanumeric uppercase)
+  const rnd = (n) => crypto.randomBytes(n).toString('hex').toUpperCase();
+  // shorten hex to desired groups
+  return `SB-${rnd(2).slice(0,4)}-${rnd(2).slice(0,3)}-${rnd(1).slice(0,1)}-${rnd(2).slice(0,4)}`;
+}
+
+function hashKey(rawKey) {
+  const pepper = process.env.CONNECT_KEY_PEPPER || '';
+  return crypto.createHash('sha256').update(`${rawKey}:${pepper}`).digest('hex');
 }
 
 router.post('/issue', secureRoute, async (req, res) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' });
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized (no user)' });
+    }
 
-    // Revoke previous keys for this user (optional but tidy)
+    // 1) revoke previous active keys
     const { error: revokeErr } = await supabase
       .from('connect_keys')
       .update({ revoked: true })
@@ -29,25 +41,41 @@ router.post('/issue', secureRoute, async (req, res) => {
 
     if (revokeErr) {
       console.error('Revoke previous keys error:', revokeErr);
-      // Continue anyway
+      // non-fatal, carry on
     }
 
-    const connectKey = genKey();
-    const expiresAt = null; // or new Date(Date.now() + 90*24*3600e3).toISOString()
+    // 2) insert new key (hash only)
+    const plain = generateKey();
+    const keyHash = hashKey(plain);
 
-    const { error: insErr } = await supabase
+    let expiresAt = null;
+    const ttlDays = parseInt(process.env.CONNECT_KEY_TTL_DAYS || '0', 10);
+    if (ttlDays > 0) {
+      const dt = new Date();
+      dt.setUTCDate(dt.getUTCDate() + ttlDays);
+      expiresAt = dt.toISOString();
+    }
+
+    const { data, error: insErr } = await supabase
       .from('connect_keys')
-      .insert([{ user_id: userId, key: connectKey, expires_at: expiresAt }]);
+      .insert({
+        user_id: userId,
+        key_hash: keyHash,
+        expires_at: expiresAt,
+        revoked: false,
+      })
+      .select()
+      .single();
 
     if (insErr) {
       console.error('Insert key error:', insErr);
-      return res.status(500).json({ error: 'Could not issue key' });
+      return res.status(500).json({ error: 'Failed to create key' });
     }
 
-    return res.json({ connect_key: connectKey });
+    return res.json({ connect_key: plain, id: data.id, expires_at: expiresAt });
   } catch (err) {
-    console.error('connect/issue error:', err);
-    return res.status(500).json({ error: 'Unexpected server error' });
+    console.error('Issue key fatal error:', err);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
