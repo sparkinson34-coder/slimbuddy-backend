@@ -1,282 +1,346 @@
-openapi: 3.1.0
+openapi: 3.1.1
 info:
   title: SlimBuddy API
   version: 1.0.0
   description: >
-    REST API for SlimBuddy. Calls require `Authorization: Bearer <user JWT>`
-    (Supabase access_token). GPT Actions auth should be set to API Key → Bearer
-    so each user pastes their own token.
+    SlimBuddy backend. All authenticated routes require an Authorization header
+    ("Bearer <token>"). Dates may be provided as DD/MM/YYYY or DD-MM-YYYY and are
+    normalized server-side.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
   schemas:
-    ApiMessage:
+    SimpleOk:
       type: object
       properties:
+        ok: { type: boolean }
         message: { type: string }
-      additionalProperties: false
 
-    ErrorResponse:
+    EchoResponse:
       type: object
       properties:
-        error: { type: string }
-      additionalProperties: false
+        ok: { type: boolean }
+        user:
+          type: object
+          properties:
+            id: { type: string }
+            email: { type: string, nullable: true }
 
     LogMealRequest:
       type: object
-      required: [date, meal_description, syns]
-      properties:
-        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
-        meal_type: { type: string, nullable: true, example: "Lunch" }
-        meal_description: { type: string, example: "Chicken stir fry with soy sauce" }
-        syns: { type: number, example: 3.5 }
-        calories: { type: integer, nullable: true, example: 420 }
-        healthy_extra_a_used: { type: boolean, nullable: true, example: false }
-        healthy_extra_b_used: { type: boolean, nullable: true, example: false }
-        notes: { type: string, nullable: true, example: "Used 1 tbsp soy sauce" }
       additionalProperties: false
+      properties:
+        date: { type: string, description: "YYYY-MM-DD or UK format; server normalizes" }
+        meal_type: { type: string, nullable: true }
+        meal_description: { type: string }
+        syns: { type: number, description: "Syns, will be rounded to nearest 0.5" }
+        calories: { type: number, nullable: true }
+        healthy_extra_a_used: { type: boolean, nullable: true }
+        healthy_extra_b_used: { type: boolean, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [meal_description, syns]
 
     LogWeightRequest:
       type: object
-      required: [date, weight, unit]
-      properties:
-        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
-        weight: { type: number, example: 82.4 }
-        unit:
-          type: string
-          description: Input unit; server stores kg
-          enum: [kg, lb, st_lbs]
-          example: kg
-        notes: { type: string, nullable: true, example: "Post-workout weigh-in" }
       additionalProperties: false
+      properties:
+        date: { type: string, description: "YYYY-MM-DD or UK format; server normalizes" }
+        weight: { type: number, description: "If unit=kg, this is kilograms" }
+        unit: { type: string, enum: [kg, lbs, st_lbs] }
+        stones: { type: number, nullable: true, description: "Used when unit=st_lbs" }
+        pounds: { type: number, nullable: true, description: "Used when unit=st_lbs" }
+        notes: { type: string, nullable: true }
+      required: [unit]
 
     LogExerciseRequest:
       type: object
-      required: [date, activity]
-      properties:
-        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
-        activity: { type: string, example: "Walking" }
-        duration_minutes: { type: integer, nullable: true, example: 45 }
-        intensity: { type: string, nullable: true, example: "Moderate" }
-        calories_burned: { type: number, nullable: true, example: 300 }
-        steps: { type: integer, nullable: true, example: 7500 }
-        distance_km: { type: number, nullable: true, example: 5.2 }
-        notes: { type: string, nullable: true, example: "Morning walk in the park" }
       additionalProperties: false
+      properties:
+        date: { type: string, description: "YYYY-MM-DD or UK format; server normalizes" }
+        activity: { type: string }
+        duration_minutes: { type: integer, nullable: true }
+        intensity: { type: string, nullable: true }
+        calories_burned: { type: number, nullable: true }
+        steps: { type: integer, nullable: true }
+        distance_km: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [activity]
 
     LogMeasurementsRequest:
       type: object
-      required: [date]
-      properties:
-        date: { type: string, description: YYYY-MM-DD, example: "2025-08-13" }
-        bust: { type: number, nullable: true, example: 92 }
-        waist: { type: number, nullable: true, example: 75 }
-        hips: { type: number, nullable: true, example: 98 }
-        thighs: { type: number, nullable: true, example: 58 }
-        neck: { type: number, nullable: true, example: 34 }
-        arm: { type: number, nullable: true, example: 29 }
-        under_bust: { type: number, nullable: true, example: 80 }
-        knees: { type: number, nullable: true, example: 36 }
-        ankles: { type: number, nullable: true, example: 23 }
-        notes: { type: string, nullable: true, example: "Evening readings" }
       additionalProperties: false
+      properties:
+        date: { type: string, description: "YYYY-MM-DD or UK format; server normalizes" }
+        bust: { type: number, nullable: true }
+        waist: { type: number, nullable: true }
+        hips: { type: number, nullable: true }
+        thighs: { type: number, nullable: true }
+        neck: { type: number, nullable: true }
+        arm: { type: number, nullable: true }
+        under_bust: { type: number, nullable: true }
+        knees: { type: number, nullable: true }
+        ankles: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
 
-    UserGoalsRequest:
+    UserGoalRequest:
       type: object
-      required: [goal_type, target_value, target_date]
-      properties:
-        goal_type: { type: string, description: e.g., weight_loss or maintenance, example: "weight_loss" }
-        target_value: { type: number, description: Target in kg, example: 79.38 }
-        target_date: { type: string, description: YYYY-MM-DD, example: "2025-09-30" }
       additionalProperties: false
+      properties:
+        goal_type: { type: string, description: "e.g. weight_loss or maintenance" }
+        target_value: { type: number, description: "Stored as kg" }
+        target_date: { type: string, description: "YYYY-MM-DD or UK format" }
+      required: [goal_type, target_value, target_date]
 
     UpdateUserSettingsRequest:
       type: object
-      description: Send only fields that changed; server upserts.
-      properties:
-        preferred_name: { type: string, example: "Sharon" }
-        tone: { type: string, example: "friendly" }
-        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lb], example: "st_lbs" }
-        diet_preference: { type: string, example: "omnivore" }
-        food_allergies: { type: string, example: "none" }
-        food_dislikes: { type: string, example: "shellfish" }
-        typical_day: { type: string, example: "Desk job, lunchtime walk" }
-        healthy_extra_a: { type: string, example: "Low fat cheese" }
-        healthy_extra_b: { type: string, example: "Oats" }
-        syn_limit: { type: integer, example: 15 }
-        target_weight: { type: number, description: kg, example: 65 }
-        maintenance_mode_enabled: { type: boolean, example: false }
       additionalProperties: false
+      properties:
+        preferred_name: { type: string, nullable: true }
+        tone: { type: string, nullable: true }
+        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lbs], nullable: true }
+        diet_preference: { type: string, nullable: true }
+        food_allergies: { type: string, nullable: true }
+        food_dislikes: { type: string, nullable: true }
+        typical_day: { type: string, nullable: true }
+        healthy_extra_a: { type: string, nullable: true }
+        healthy_extra_b: { type: string, nullable: true }
+        syn_limit: { type: number, nullable: true }
+        target_weight: { type: number, nullable: true, description: "kg" }
+        maintenance_mode_enabled: { type: boolean, nullable: true }
 
     UpdateFoodValueRequest:
       type: object
-      required: [food_name, syn_value]
-      properties:
-        food_name: { type: string, example: "Weetabix Minis - Chocolate" }
-        syn_value: { type: number, example: 6 }
-        notes: { type: string, nullable: true, example: "Corrected from 4 to 6 Syns" }
-        date: { type: string, nullable: true, description: YYYY-MM-DD, example: "2025-08-13" }
       additionalProperties: false
+      properties:
+        food_name: { type: string }
+        syn_value: { type: number }
+        notes: { type: string, nullable: true }
+        date: { type: string, nullable: true, description: "YYYY-MM-DD or UK format" }
+      required: [food_name, syn_value]
 
-# Default: all routes require Bearer unless they override with `security: []`.
-security:
-  - bearerAuth: []
+    WeightGraphResponse:
+      type: object
+      properties:
+        user_id: { type: string }
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string }
+              weight: { type: number }
+
+  parameters:
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: true
+      description: "Paste: Bearer <your SlimBuddy token>"
+      schema:
+        type: string
+      x-openai-is-secret: true
 
 paths:
   /api/ping:
     get:
       operationId: ping
-      summary: Health check (no auth)
-      description: Returns simple status payload.
-      security: []   # opt out of auth here
+      summary: Health check
       responses:
         '200':
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: ok }
-                  message: { type: string, example: SlimBuddy API is alive }
-                  timestamp: { type: string, example: "2025-08-13T08:31:47.302Z" }
+              schema: { $ref: '#/components/schemas/SimpleOk' }
 
   /api/auth_echo:
     get:
       operationId: authEcho
-      summary: Echo back whether Authorization header is present
+      summary: Echo authenticated user (debug)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
-          description: Success
+          description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  method: { type: string }
-                  path: { type: string }
-                  hasAuth: { type: boolean }
-                  authPreview: { type: string }
+              schema: { $ref: '#/components/schemas/EchoResponse' }
+        '401': { description: Unauthorized }
 
   /api/log_meal:
     post:
       operationId: logMeal
-      summary: Log a meal/snack
+      summary: Log a meal with Syns
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/LogMealRequest' }
       responses:
-        '200': { description: Meal logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/log_weight:
     post:
       operationId: logWeight
       summary: Log a weight entry
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/LogWeightRequest' }
       responses:
-        '200': { description: Weight logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/log_exercise:
     post:
       operationId: logExercise
       summary: Log an exercise session
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/LogExerciseRequest' }
       responses:
-        '200': { description: Exercise logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/log_measurements:
     post:
       operationId: logMeasurements
-      summary: Log body measurements (cm)
+      summary: Log body measurements
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/LogMeasurementsRequest' }
       responses:
-        '200': { description: Measurements logged, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/user_goals:
     post:
       operationId: setUserGoal
-      summary: Create/update a goal (target stored as kg)
+      summary: Set a user goal
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UserGoalsRequest' }
+            schema: { $ref: '#/components/schemas/UserGoalRequest' }
       responses:
-        '200': { description: Goal saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/update_user_settings:
     patch:
       operationId: updateUserSettings
-      summary: Update (upsert) user profile/settings
+      summary: Upsert user settings (only send fields that changed)
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateUserSettingsRequest' }
       responses:
-        '200': { description: Settings saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/update_food_value:
     post:
       operationId: updateFoodValue
-      summary: Create/update a Syn value entry
+      summary: Save a user-specific Syn override
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/UpdateFoodValueRequest' }
       responses:
-        '200': { description: Syn value saved, content: { application/json: { schema: { $ref: '#/components/schemas/ApiMessage' } } } }
-        '400': { description: Bad request, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleOk' }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
 
   /api/weight_graph:
     get:
       operationId: getWeightGraph
-      summary: Get weight entries (optionally scoped by range)
+      summary: Get weight history
       parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: range
           in: query
           required: false
-          description: Optional time range window.
           schema:
             type: string
             enum: [7d, 30d, 90d, 1y, all]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WeightGraphResponse' }
+        '401': { description: Unauthorized }
+
+  /api/user_profile:
+    get:
+      operationId: getUserProfile
+      summary: Get authenticated user_id
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
           description: OK
@@ -286,26 +350,4 @@ paths:
                 type: object
                 properties:
                   user_id: { type: string }
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        date: { type: string, example: "2025-08-13" }
-                        weight: { type: number, example: 82.4 }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
-
-  /api/user_profile:
-    get:
-      operationId: getUserProfile
-      summary: Return the current user's id (from token)
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user_id: { type: string, example: "ca2a7bd6-cfc4-428a-b643-746d83414b16" }
-        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { description: Unauthorized }

@@ -63,9 +63,13 @@ app.get('/api/ping', (_req, res) => {
   res.json({ ok: true, message: 'SlimBuddy backend is alive!', timestamp: new Date().toISOString() });
 });
 
-// Error messaging to detect what header information is being sent by the GPT
 app.use((req, res, next) => {
-  console.log("Incoming headers:", req.headers);
+  if (process.env.DEBUG_HEADERS === "true") {
+    console.log(`[Headers ${req.method} ${req.originalUrl}]`, {
+      auth: req.headers.authorization || "-",
+      contentType: req.headers["content-type"] || "-",
+    });
+  }
   next();
 });
 
