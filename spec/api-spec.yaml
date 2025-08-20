@@ -3,21 +3,27 @@ info:
   title: SlimBuddy API
   version: 1.0.0
   description: >
-    SlimBuddy backend. All authenticated routes require an Authorization header
-    ("Bearer <token>"). Dates may be provided as DD/MM/YYYY or DD-MM-YYYY and are
-    normalized server-side.
+    SlimBuddy backend. Authenticated routes require Authorization: Bearer <token>.
+    Dates may be provided as DD/MM/YYYY or DD-MM-YYYY and are normalized server-side.
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Paste: Bearer <your SlimBuddy token>"
+      x-openai-is-secret: true
+
   schemas:
     SimpleOk:
       type: object
       properties:
         ok: { type: boolean }
         message: { type: string }
-
     EchoResponse:
       type: object
       properties:
@@ -27,7 +33,6 @@ components:
           properties:
             id: { type: string }
             email: { type: string, nullable: true }
-
     LogMealRequest:
       type: object
       additionalProperties: false
@@ -35,13 +40,12 @@ components:
         date: { type: string, description: "YYYY-MM-DD or UK format; server normalizes" }
         meal_type: { type: string, nullable: true }
         meal_description: { type: string }
-        syns: { type: number, description: "Syns, will be rounded to nearest 0.5" }
+        syns: { type: number, description: "Syns, rounded to nearest 0.5" }
         calories: { type: number, nullable: true }
         healthy_extra_a_used: { type: boolean, nullable: true }
         healthy_extra_b_used: { type: boolean, nullable: true }
         notes: { type: string, nullable: true }
       required: [meal_description, syns]
-
     LogWeightRequest:
       type: object
       additionalProperties: false
@@ -53,7 +57,6 @@ components:
         pounds: { type: number, nullable: true, description: "Used when unit=st_lbs" }
         notes: { type: string, nullable: true }
       required: [unit]
-
     LogExerciseRequest:
       type: object
       additionalProperties: false
@@ -67,7 +70,6 @@ components:
         distance_km: { type: number, nullable: true }
         notes: { type: string, nullable: true }
       required: [activity]
-
     LogMeasurementsRequest:
       type: object
       additionalProperties: false
@@ -83,7 +85,6 @@ components:
         knees: { type: number, nullable: true }
         ankles: { type: number, nullable: true }
         notes: { type: string, nullable: true }
-
     UserGoalRequest:
       type: object
       additionalProperties: false
@@ -92,7 +93,6 @@ components:
         target_value: { type: number, description: "Stored as kg" }
         target_date: { type: string, description: "YYYY-MM-DD or UK format" }
       required: [goal_type, target_value, target_date]
-
     UpdateUserSettingsRequest:
       type: object
       additionalProperties: false
@@ -109,7 +109,6 @@ components:
         syn_limit: { type: number, nullable: true }
         target_weight: { type: number, nullable: true, description: "kg" }
         maintenance_mode_enabled: { type: boolean, nullable: true }
-
     UpdateFoodValueRequest:
       type: object
       additionalProperties: false
@@ -119,7 +118,6 @@ components:
         notes: { type: string, nullable: true }
         date: { type: string, nullable: true, description: "YYYY-MM-DD or UK format" }
       required: [food_name, syn_value]
-
     WeightGraphResponse:
       type: object
       properties:
@@ -132,21 +130,15 @@ components:
               date: { type: string }
               weight: { type: number }
 
-  parameters:
-    AuthorizationHeader:
-      name: Authorization
-      in: header
-      required: true
-      description: "Paste: Bearer <your SlimBuddy token>"
-      schema:
-        type: string
-      x-openai-is-secret: true
+security:
+  - ApiKeyAuth: []   # apply Authorization header to all endpoints by default
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check
+      security: []      # no auth required for ping
       responses:
         '200':
           description: OK
@@ -158,8 +150,6 @@ paths:
     get:
       operationId: authEcho
       summary: Echo authenticated user (debug)
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
           description: OK
@@ -172,8 +162,6 @@ paths:
     post:
       operationId: logMeal
       summary: Log a meal with Syns
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -193,8 +181,6 @@ paths:
     post:
       operationId: logWeight
       summary: Log a weight entry
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -214,8 +200,6 @@ paths:
     post:
       operationId: logExercise
       summary: Log an exercise session
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -235,8 +219,6 @@ paths:
     post:
       operationId: logMeasurements
       summary: Log body measurements
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -256,8 +238,6 @@ paths:
     post:
       operationId: setUserGoal
       summary: Set a user goal
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -277,8 +257,6 @@ paths:
     patch:
       operationId: updateUserSettings
       summary: Upsert user settings (only send fields that changed)
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -298,8 +276,6 @@ paths:
     post:
       operationId: updateFoodValue
       summary: Save a user-specific Syn override
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       requestBody:
         required: true
         content:
@@ -320,7 +296,6 @@ paths:
       operationId: getWeightGraph
       summary: Get weight history
       parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
         - name: range
           in: query
           required: false
@@ -339,8 +314,6 @@ paths:
     get:
       operationId: getUserProfile
       summary: Get authenticated user_id
-      parameters:
-        - $ref: '#/components/parameters/AuthorizationHeader'
       responses:
         '200':
           description: OK

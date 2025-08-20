@@ -1,49 +1,48 @@
 openapi: 3.1.1
 info:
-  title: SlimBuddy API (GPT Import - Minimal)
+  title: SlimBuddy API (GPT Import - Minimal, Auth Fixed)
   version: 1.0.0
+  description: |
+    Paste your token when prompted — include the word "Bearer", e.g.:
+    Bearer eyJhbGciOiJIUzI1NiIs...
+
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Paste: Bearer <your SlimBuddy token>"
+      x-openai-is-secret: true
+
+security:
+  - ApiKeyAuth: []   # apply to all paths (you can override per-operation if needed)
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check
+      # ping does not require auth — override inherited security:
+      security: []
       responses:
-        '200':
-          description: OK
+        '200': { description: OK }
 
   /api/auth_echo:
     get:
       operationId: authEcho
       summary: Echo authenticated user (debug)
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: "Paste: Bearer <your SlimBuddy token>"
-          schema:
-            type: string
-          x-openai-is-secret: true
       responses:
-        '200':
-          description: OK
-        '401':
-          description: Unauthorized
+        '200': { description: OK }
+        '401': { description: Unauthorized }
 
   /api/log_weight:
     post:
       operationId: logWeight
       summary: Log a weight entry
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: "Paste: Bearer <your SlimBuddy token>"
-          schema:
-            type: string
-          x-openai-is-secret: true
       requestBody:
         required: true
         content:
@@ -70,11 +69,7 @@ paths:
                   type: string
               required: [unit]
       responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '500':
-          description: Server error
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '500': { description: Server error }
