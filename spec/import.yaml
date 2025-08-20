@@ -1,92 +1,80 @@
 openapi: 3.1.1
 info:
-  title: SlimBuddy API (GPT Import)
+  title: SlimBuddy API (GPT Import - Minimal)
   version: 1.0.0
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
-components:
-  parameters:
-    AuthorizationHeader:
-      name: Authorization
-      in: header
-      required: true
-      description: "Paste: Bearer <your SlimBuddy token>"
-      schema:
-        type: string
-      x-openai-is-secret: true
+
 paths:
   /api/ping:
-    get: { operationId: ping, responses: { '200': { description: OK } } }
+    get:
+      operationId: ping
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+
   /api/auth_echo:
     get:
       operationId: authEcho
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
+      summary: Echo authenticated user (debug)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: "Paste: Bearer <your SlimBuddy token>"
+          schema:
+            type: string
+          x-openai-is-secret: true
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+
   /api/log_weight:
     post:
       operationId: logWeight
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/log_meal:
-    post:
-      operationId: logMeal
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/log_exercise:
-    post:
-      operationId: logExercise
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/log_measurements:
-    post:
-      operationId: logMeasurements
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/user_goals:
-    post:
-      operationId: setUserGoal
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/update_user_settings:
-    patch:
-      operationId: updateUserSettings
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/update_food_value:
-    post:
-      operationId: updateFoodValue
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object } } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/weight_graph:
-    get:
-      operationId: getWeightGraph
+      summary: Log a weight entry
       parameters:
-        - { $ref: '#/components/parameters/AuthorizationHeader' }
-        - { name: range, in: query, schema: { type: string, enum: [7d, 30d, 90d, 1y, all] } }
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
-  /api/user_profile:
-    get:
-      operationId: getUserProfile
-      parameters: [ { $ref: '#/components/parameters/AuthorizationHeader' } ]
-      responses: { '200': { description: OK }, '401': { description: Unauthorized } }
+        - name: Authorization
+          in: header
+          required: true
+          description: "Paste: Bearer <your SlimBuddy token>"
+          schema:
+            type: string
+          x-openai-is-secret: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                date:
+                  type: string
+                  description: "YYYY-MM-DD or UK format; server normalizes"
+                weight:
+                  type: number
+                unit:
+                  type: string
+                  enum: [kg, lbs, st_lbs]
+                stones:
+                  type: number
+                  description: "If unit=st_lbs"
+                pounds:
+                  type: number
+                  description: "If unit=st_lbs (optional)"
+                notes:
+                  type: string
+              required: [unit]
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Server error
