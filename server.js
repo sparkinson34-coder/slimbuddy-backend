@@ -89,25 +89,23 @@ function mountRoute(mountPath, filePath) {
   }
 }
 
-/* ---------- Mount API routes unless in SAFE_MODE ---------- */
-if (!SAFE_MODE) {
-  const ap = (p) => path.join(__dirname, 'api', p);
+// --- mount API routes (each file exports an Express Router) ---
+app.use('/api/ping', require('./api/ping.js'));
+app.use('/api/auth_echo', require('./api/auth_echo.js'));
+app.use('/api/env_check', require('./api/env_check.js'));
 
-  mountRoute('/api/log_meal',           ap('log_meal.js'));
-  mountRoute('/api/log_weight',         ap('log_weight.js'));
-  mountRoute('/api/log_exercise',       ap('log_exercise.js'));
-  mountRoute('/api/log_measurements',   ap('log_measurements.js'));
-  mountRoute('/api/user_goals',         ap('user_goals.js'));
-  mountRoute('/api/update_user_settings', ap('update_user_settings.js'));
-  mountRoute('/api/update_food_value',  ap('update_user_settings.js')); // if you have a **separate** file, change to update_food_value.js
-  mountRoute('/api/weight_graph',       ap('weight_graph.js'));
-  mountRoute('/api/user_profile',       ap('user_profile.js'));
-  mountRoute('/api/auth_echo',          ap('auth_echo.js'));
-  mountRoute('/api/env_check',          ap('env_check.js'));
-  mountRoute('/api/connect/issue', path.join(__dirname, 'api', 'connect_issue.js'));
-} else {
-  console.warn('🔒 SAFE_MODE=1: Skipping all API mounts; serving ping + spec only.');
-}
+app.use('/api/log_meal', require('./api/log_meal.js'));
+app.use('/api/log_weight', require('./api/log_weight.js'));
+app.use('/api/log_exercise', require('./api/log_exercise.js'));
+app.use('/api/log_measurements', require('./api/log_measurements.js'));
+app.use('/api/user_goals', require('./api/user_goals.js'));
+app.use('/api/update_user_settings', require('./api/update_user_settings.js'));
+app.use('/api/update_food_value', require('./api/update_food_value.js'));
+app.use('/api/weight_graph', require('./api/weight_graph.js'));
+app.use('/api/user_profile', require('./api/user_profile.js'));
+
+// ✅ NEW: Connect-key issuing endpoint
+app.use('/api/connect', require('./api/connect.js'));
 
 /* ---------- 404 + error handler ---------- */
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
