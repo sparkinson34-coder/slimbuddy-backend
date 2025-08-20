@@ -104,6 +104,7 @@ if (!SAFE_MODE) {
   mountRoute('/api/user_profile',       ap('user_profile.js'));
   mountRoute('/api/auth_echo',          ap('auth_echo.js'));
   mountRoute('/api/env_check',          ap('env_check.js'));
+  mountRoute('/api/connect/issue', path.join(__dirname, 'api', 'connect_issue.js'));
 } else {
   console.warn('🔒 SAFE_MODE=1: Skipping all API mounts; serving ping + spec only.');
 }
