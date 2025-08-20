@@ -1,15 +1,16 @@
-openapi: 3.1.1
+openapi: 3.1.0
 info:
-  title: SlimBuddy API (GPT Import - Minimal, Auth Fixed)
+  title: SlimBuddy API (GPT Import - Minimal)
   version: 1.0.0
   description: |
-    Paste your token when prompted — include the word "Bearer", e.g.:
+    Paste your token when prompted — include "Bearer ", for example:
     Bearer eyJhbGciOiJIUzI1NiIs...
 
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
+  schemas: {}
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
@@ -19,15 +20,14 @@ components:
       x-openai-is-secret: true
 
 security:
-  - ApiKeyAuth: []   # apply to all paths (you can override per-operation if needed)
+  - ApiKeyAuth: []  # apply Authorization to all paths by default
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check
-      # ping does not require auth — override inherited security:
-      security: []
+      security: []      # ping does not require auth
       responses:
         '200': { description: OK }
 

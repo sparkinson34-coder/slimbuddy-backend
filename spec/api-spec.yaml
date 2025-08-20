@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.1.0
 info:
   title: SlimBuddy API
   version: 1.0.0
@@ -10,14 +10,6 @@ servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
 components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: Authorization
-      description: "Paste: Bearer <your SlimBuddy token>"
-      x-openai-is-secret: true
-
   schemas:
     SimpleOk:
       type: object
@@ -130,15 +122,23 @@ components:
               date: { type: string }
               weight: { type: number }
 
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Paste: Bearer <your SlimBuddy token>"
+      x-openai-is-secret: true
+
 security:
-  - ApiKeyAuth: []   # apply Authorization header to all endpoints by default
+  - ApiKeyAuth: []
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check
-      security: []      # no auth required for ping
+      security: []
       responses:
         '200':
           description: OK
@@ -158,25 +158,6 @@ paths:
               schema: { $ref: '#/components/schemas/EchoResponse' }
         '401': { description: Unauthorized }
 
-  /api/log_meal:
-    post:
-      operationId: logMeal
-      summary: Log a meal with Syns
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/LogMealRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
   /api/log_weight:
     post:
       operationId: logWeight
@@ -195,132 +176,3 @@ paths:
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '500': { description: Server error }
-
-  /api/log_exercise:
-    post:
-      operationId: logExercise
-      summary: Log an exercise session
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/LogExerciseRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
-  /api/log_measurements:
-    post:
-      operationId: logMeasurements
-      summary: Log body measurements
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/LogMeasurementsRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
-  /api/user_goals:
-    post:
-      operationId: setUserGoal
-      summary: Set a user goal
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UserGoalRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
-  /api/update_user_settings:
-    patch:
-      operationId: updateUserSettings
-      summary: Upsert user settings (only send fields that changed)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateUserSettingsRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
-  /api/update_food_value:
-    post:
-      operationId: updateFoodValue
-      summary: Save a user-specific Syn override
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateFoodValueRequest' }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SimpleOk' }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '500': { description: Server error }
-
-  /api/weight_graph:
-    get:
-      operationId: getWeightGraph
-      summary: Get weight history
-      parameters:
-        - name: range
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [7d, 30d, 90d, 1y, all]
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/WeightGraphResponse' }
-        '401': { description: Unauthorized }
-
-  /api/user_profile:
-    get:
-      operationId: getUserProfile
-      summary: Get authenticated user_id
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user_id: { type: string }
-        '401': { description: Unauthorized }
