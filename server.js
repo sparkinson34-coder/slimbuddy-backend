@@ -63,6 +63,12 @@ app.get('/api/ping', (_req, res) => {
   res.json({ ok: true, message: 'SlimBuddy backend is alive!', timestamp: new Date().toISOString() });
 });
 
+// Error messaging to detect what header information is being sent by the GPT
+app.use((req, res, next) => {
+  console.log("Incoming headers:", req.headers);
+  next();
+});
+
 /* ================================
  * ✅ EXPLICIT ROUTE MOUNTS (robust)
  * ================================ */
