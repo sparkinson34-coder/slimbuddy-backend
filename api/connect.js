@@ -1,84 +1,87 @@
 /**
- * ✅ Connect Key Issuer
- * Creates a short-lived “connect key” tied to the Supabase user.
- * - Auth: Authorization: Bearer <Supabase access_token>  (from magic link)
- * - DB: stores only a SHA-256 hash of the key (no plaintext)
- * - Revoke any previous active keys for this user
- * - Sets expires_at (default: now + 30 minutes)
+/**
+ * 🔐 /api/connect — Issue short-lived Connect Keys for GPT
+ *
+ * Flow:
+ * - Called by your Netlify login page with *Bearer JWT* from Supabase session.
+ * - Issues a short, human-friendly connect key (e.g., SB-AB12-3CD-E-4567).
+ * - Stores the plaintext key in connect_keys.key (for simplicity + alignment with current middleware),
+ *   marks previous keys inactive, and sets an expiry.
+ * - GPT users paste this short key once; GPT then sends it in header: X-Connect-Key.
+ *
+ * Env:
+ * - CONNECT_KEY_TTL_DAYS (optional, default 30)
  */
+
 const express = require('express');
-const crypto = require('crypto');
 const router = express.Router();
 
 const supabase = require('../lib/supabaseClient');
 const secureRoute = require('../lib/authMiddleware');
 
-function randomKey() {
-  // SB-XXXX-XXX-X-XXXX  (keeps it short & human-friendly)
-  const rand = () => crypto.randomBytes(2).toString('hex').slice(0, 4).toUpperCase();
-  const chunk1 = rand();           // 4
-  const chunk2 = rand().slice(0,3); // 3
-  const chunk3 = rand().slice(0,1); // 1
-  const chunk4 = rand();           // 4
-  return `SB-${chunk1}-${chunk2}-${chunk3}-${chunk4}`;
+const DEFAULT_TTL_DAYS = Number(process.env.CONNECT_KEY_TTL_DAYS || 30);
+
+// --- helpers ---
+function randChunk(len) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // skip ambiguous chars
+  let out = '';
+  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+}
+function generateHumanKey() {
+  // SB-XXXX-XXX-X-XXXX (easy to read/dictate)
+  return `SB-${randChunk(4)}-${randChunk(3)}-${randChunk(1)}-${randChunk(4)}`;
 }
 
-function sha256Hex(s) {
-  return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-}
-
-// POST /api/connect/issue
+// --- POST /api/connect/issue ---
+// Requires Bearer JWT (from Netlify login page). DO NOT call this from GPT.
 router.post('/issue', secureRoute, async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized (no user id)' });
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Unauthorized (no user in request)' });
     }
+    const userId = req.user.id;
 
-    // explicit expiry: 30 minutes from now
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-    // revoke any old active keys
-    const revoke = await supabase
+    // 1) deactivate previous keys for this user
+    const { error: revokeErr } = await supabase
       .from('connect_keys')
-      .update({ revoked: true })
+      .update({ active: false })
       .eq('user_id', userId)
-      .eq('revoked', false);
+      .eq('active', true);
 
-    if (revoke.error) {
-      console.error('Revoke previous keys error:', revoke.error);
-      // don’t return; continue to issue a new key anyway
+    if (revokeErr) {
+      console.error('Revoke previous keys error:', revokeErr);
+      // continue anyway — not fatal
     }
 
-    // make a new key & store only its hash
-    const key = randomKey();
-    const keyHash = sha256Hex(key);
+    // 2) mint a new key (plaintext)
+    const key = generateHumanKey();
+    const expiresAt = new Date(Date.now() + DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-    const insert = await supabase
+    const { data, error } = await supabase
       .from('connect_keys')
       .insert({
         user_id: userId,
-        key_hash: keyHash,
+        key,                // plaintext (aligns with current authMiddleware)
         expires_at: expiresAt,
-        revoked: false,
-        last_used_at: null
+        active: true,
       })
-      .select('id')
+      .select()
       .single();
 
-    if (insert.error) {
-      console.error('Insert key error:', insert.error);
-      return res.status(500).json({ error: 'failed_to_create_key' });
+    if (error) {
+      console.error('Insert key error:', error);
+      return res.status(500).json({ error: 'Failed to create connect key' });
     }
 
     return res.json({
       ok: true,
-      connect_key: key,
-      expires_at: expiresAt
+      key,              // return plaintext once so the UI can show it to user
+      expires_at: expiresAt,
     });
-  } catch (err) {
-    console.error('Issue key unexpected error:', err);
-    return res.status(500).json({ error: 'unexpected_error' });
+  } catch (e) {
+    console.error('connect/issue error:', e);
+    return res.status(500).json({ error: 'Unexpected server error' });
   }
 });
 

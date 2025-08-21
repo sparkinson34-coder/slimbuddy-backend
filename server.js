@@ -91,9 +91,7 @@ function mountRoute(mountPath, filePath) {
 
 // --- mount API routes (each file exports an Express Router) ---
 app.use('/api/ping', require('./api/ping.js'));
-app.use('/api/auth_echo', require('./api/auth_echo.js'));
 app.use('/api/env_check', require('./api/env_check.js'));
-
 app.use('/api/log_meal', require('./api/log_meal.js'));
 app.use('/api/log_weight', require('./api/log_weight.js'));
 app.use('/api/log_exercise', require('./api/log_exercise.js'));
@@ -104,8 +102,11 @@ app.use('/api/update_food_value', require('./api/update_food_value.js'));
 app.use('/api/weight_graph', require('./api/weight_graph.js'));
 app.use('/api/user_profile', require('./api/user_profile.js'));
 
-// ✅ NEW: Connect-key issuing endpoint
+// ✅ NEW: connect-key issuing endpoint (for Netlify page)
 app.use('/api/connect', require('./api/connect.js'));
+
+// ✅ Debug echo to verify auth works
+app.use('/api/auth_echo', require('./api/auth_echo.js'));
 
 /* ---------- 404 + error handler ---------- */
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
