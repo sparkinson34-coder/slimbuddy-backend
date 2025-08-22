@@ -14,73 +14,94 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 
-const supabase = require('../lib/supabaseClient');
-const secureRoute = require('../lib/authMiddleware');
+const supabase = require('../lib/supabaseClient');           // NOTE: path matches your /lib layout
+const secureRoute = require('../lib/authMiddleware');        // same auth middleware used elsewhere
 
 const DEFAULT_TTL_DAYS = Number(process.env.CONNECT_KEY_TTL_DAYS || 30);
 
-// --- helpers ---
-function randChunk(len) {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // skip ambiguous chars
-  let out = '';
-  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return out;
-}
-function generateHumanKey() {
-  // SB-XXXX-XXX-X-XXXX (easy to read/dictate)
-  return `SB-${randChunk(4)}-${randChunk(3)}-${randChunk(1)}-${randChunk(4)}`;
+/**
+ * This route expects a valid Supabase access token (Bearer <JWT>) from
+ * the magic-link sign-in. The authMiddleware must accept Bearer JWTs,
+ * call supabase.auth.getUser(), and set req.user = { id, email }.
+ *
+ * It then:
+ * - Revokes any existing active keys for this user
+ * - Generates a short Connect Key (SB-XXXX-XXX-X-XXXX)
+ * - Hashes it and stores (user_id, key_hash, expires_at, active=true)
+ * - Returns the plain Connect Key for the user to paste in GPT
+ */
+
+// helper: generate short printable key
+function makeConnectKey() {
+  // 12 random bytes ~ 16 chars base32-like, we'll format as SB-XXXX-XXX-X-XXXX
+  const raw = crypto.randomBytes(8).toString('hex').toUpperCase();
+  // build something friendly: 4-3-1-4 from the raw hex
+  return `SB-${raw.slice(0,4)}-${raw.slice(4,7)}-${raw.slice(7,8)}-${raw.slice(8,12)}`;
 }
 
-// --- POST /api/connect/issue ---
-// Requires Bearer JWT (from Netlify login page). DO NOT call this from GPT.
+// helper: sha256
+function sha256(s) {
+  return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+}
+
 router.post('/issue', secureRoute, async (req, res) => {
   try {
+    // must be set by authMiddleware when a valid Supabase Bearer token is provided
     if (!req.user || !req.user.id) {
       return res.status(401).json({ error: 'Unauthorized (no user in request)' });
     }
     const userId = req.user.id;
 
-    // 1) deactivate previous keys for this user
-    const { error: revokeErr } = await supabase
+    // Basic inputs (optional label, ttl minutes)
+    const { label, ttl_minutes } = req.body || {};
+    const ttl = Number.isFinite(+ttl_minutes) && +ttl_minutes > 0 ? +ttl_minutes : 30;
+    const expiresAt = new Date(Date.now() + ttl * 60 * 1000).toISOString();
+
+    // Revoke any existing active keys for this user
+    const revoke = await supabase
       .from('connect_keys')
-      .update({ active: false })
+      .update({ active: false /*, revoked: true*/ })
       .eq('user_id', userId)
       .eq('active', true);
 
-    if (revokeErr) {
-      console.error('Revoke previous keys error:', revokeErr);
-      // continue anyway — not fatal
+    if (revoke.error && revoke.error.code !== 'PGRST204') {
+      // PGRST204 = no rows, not an error for us
+      console.error('Revoke previous keys error:', revoke.error);
+      // continue
     }
 
-    // 2) mint a new key (plaintext)
-    const key = generateHumanKey();
-    const expiresAt = new Date(Date.now() + DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    // Generate new key
+    const plainKey = makeConnectKey();
+    const keyHash = sha256(plainKey);
 
-    const { data, error } = await supabase
+    // Insert new key
+    const insert = await supabase
       .from('connect_keys')
       .insert({
         user_id: userId,
-        key,                // plaintext (aligns with current authMiddleware)
+        key_hash: keyHash,
         expires_at: expiresAt,
-        active: true,
+        label: label || null,
+        active: true
       })
-      .select()
+      .select('id')
       .single();
 
-    if (error) {
-      console.error('Insert key error:', error);
+    if (insert.error) {
+      console.error('Insert key error:', insert.error);
       return res.status(500).json({ error: 'Failed to create connect key' });
     }
 
     return res.json({
-      ok: true,
-      key,              // return plaintext once so the UI can show it to user
+      key: plainKey,
       expires_at: expiresAt,
+      ttl_minutes: ttl
     });
-  } catch (e) {
-    console.error('connect/issue error:', e);
+  } catch (err) {
+    console.error('Unhandled /api/connect/issue error:', err);
     return res.status(500).json({ error: 'Unexpected server error' });
   }
 });
