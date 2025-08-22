@@ -104,6 +104,7 @@ app.use('/api/user_profile', require('./api/user_profile.js'));
 
 // ✅ NEW: connect-key issuing endpoint (for Netlify page)
 app.use('/api/connect', require('./api/connect.js'));
+app.use('/api/connect/verify', require('./api/connect/verify.js')); 
 
 // ✅ Debug echo to verify auth works
 app.use('/api/auth_echo', require('./api/auth_echo.js'));
