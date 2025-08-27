@@ -4,14 +4,13 @@
  * What this file does
  * -------------------
  * - Loads env and sets up Express (CORS + JSON body parsing).
- * - Logs every request (method, path, status, auth presence).
- * - Optional SAFE_MODE: serve only ping + spec to isolate GPT import issues.
+ * - Logs every request (method, path, status, whether an auth header was present).
  * - Protects spec endpoints with BASIC auth (SPEC_USER / SPEC_PASS).
- * - Mounts all API route files under /api/*, including /api/connect and /api/connect/verify.
+ * - Mounts all API route files under /api/*, including nested /api/connect/verify.
+ * - Optional SAFE_MODE: if SAFE_MODE=1, only serves /api/ping and /spec/* (handy when debugging GPT imports).
  * - Standard 404 + error handlers.
  *
- * Folder layout expected
- * ----------------------
+ * Expected folder layout
  * slimbuddy-backend/
  * ├── api/
  * │   ├── connect/
@@ -34,11 +33,6 @@
  * └── spec/
  *     ├── api-spec.yaml
  *     └── import.yaml
- * ├── server.js
- * ├── package.json
- * ├── .gitignore
- * ├── bulk_upload.js
- * ├── testAllRoutes.js
  */
 
 require('dotenv').config();
@@ -48,40 +42,38 @@ const path = require('path');
 
 const app = express();
 
-// --- core middleware ---
+// -------- core middleware --------
 app.use(cors());
 app.use(express.json());
 
-// --- request logger (compact) ---
+// request logger (simple, safe for prod)
 app.use((req, res, next) => {
-  const started = Date.now();
+  const start = Date.now();
   res.on('finish', () => {
-    const ms = Date.now() - started;
-    const authHdr = req.headers.authorization;
-    const hasAuth = authHdr ? (authHdr.split(' ')[0] || '?') : '-';
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms) auth:${hasAuth}`);
+    const took = Date.now() - start;
+    const hasAuth = req.headers.authorization ? (req.headers.authorization.startsWith('Bearer') ? 'Bearer' : '(other)') : '-';
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${took}ms) auth:${hasAuth}`);
   });
   next();
 });
 
-// --- simple home route ---
+// -------- trivial home route --------
 app.get('/', (req, res) => res.send('SlimBuddy API running!'));
 
-// --- Spec basic auth ---
+// -------- BASIC auth for spec files --------
 function specBasicAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Basic ')) {
     res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
     return res.status(401).send('Authentication required');
   }
-  const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64')
-    .toString().split(':');
+  const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64').toString().split(':');
   if (user === process.env.SPEC_USER && pass === process.env.SPEC_PASS) return next();
   res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
   return res.status(401).send('Invalid credentials');
 }
 
-// --- serve specs ---
+// -------- serve OpenAPI files --------
 app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
@@ -92,21 +84,25 @@ app.get('/spec/import.yaml', specBasicAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'spec', 'import.yaml'));
 });
 
-// --- SAFE_MODE: optionally serve only ping/spec for debugging ---
-if (process.env.SAFE_MODE === '1') {
-  console.log('🔒 SAFE_MODE=1: Skipping all API mounts; serving ping + spec only.');
-} else {
-  // --- mount API routes (regular) ---
-  app.use('/api/ping', require('./api/ping.js'));
+// -------- optionally limit to ping+spec only --------
+const SAFE_MODE = process.env.SAFE_MODE === '1';
+if (SAFE_MODE) {
+  console.log('🔒 SAFE_MODE=1: Skipping API mounts; serving /api/ping and /spec/* only.');
+}
+
+// -------- always-on minimal endpoints --------
+app.use('/api/ping', require('./api/ping.js'));
+
+// -------- full API mounts (skipped in SAFE_MODE) --------
+if (!SAFE_MODE) {
+  // diagnostic helpers
   app.use('/api/auth_echo', require('./api/auth_echo.js'));
   app.use('/api/env_check', require('./api/env_check.js'));
 
-  // Connect flow:
-  // - ./api/connect.js should export a router that defines POST /issue (and any other base connect routes)
-  // - ./api/connect/verify.js should export a router that defines GET / (mounted at /api/connect/verify)
-  app.use('/api/connect', require('./api/connect.js'));
+  // connect/verify (you DO NOT have api/connect.js; this is the correct mount)
   app.use('/api/connect/verify', require('./api/connect/verify.js'));
 
+  // main app routes
   app.use('/api/log_meal', require('./api/log_meal.js'));
   app.use('/api/log_weight', require('./api/log_weight.js'));
   app.use('/api/log_exercise', require('./api/log_exercise.js'));
@@ -118,14 +114,15 @@ if (process.env.SAFE_MODE === '1') {
   app.use('/api/user_profile', require('./api/user_profile.js'));
 }
 
-// --- 404 + error handling ---
+// -------- 404 + error handlers --------
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
   res.status(500).json({ error: 'Unexpected server error' });
 });
 
-// --- start ---
+// -------- start --------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`SlimBuddy API listening on port ${PORT}`);
