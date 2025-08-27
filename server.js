@@ -1,5 +1,4 @@
-/**
- * SlimBuddy Backend – Express bootstrap
+* SlimBuddy Backend – Express bootstrap
  *
  * What this file does
  * -------------------
@@ -17,7 +16,6 @@
  * │   ├── connect/
  * │   │   └── verify.js           -> mounts at /api/connect/verify
  * │   ├── auth_echo.js            -> /api/auth_echo
- * │   ├── connect.js              -> /api/connect
  * │   ├── env_check.js            -> /api/env_check
  * │   ├── log_meal.js             -> /api/log_meal
  * │   ├── log_weight.js           -> /api/log_weight
@@ -35,41 +33,59 @@
  * └── spec/
  *     ├── api-spec.yaml
  *     └── import.yaml
+ * ├── server.js
+ * ├── package.json
+ * ├── .gitignore
+ * ├── bulk_upload.js
+ * ├── testAllRoutes.js
  */
+
 
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+
 const app = express();
 
-// ---------- Core middleware ----------
+
+// --- core middleware ---
 app.use(cors());
 app.use(express.json());
 
-// Simple request logger
-app.use((req, res, next) => {
-  const started = Date.now();
-  res.on('finish', () => {
-    const dur = Date.now() - started;
-    const authKind = req.headers.authorization
-      ? req.headers.authorization.split(' ')[0]
-      : '-';
-    console.log(
-      `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${dur}ms) auth:${authKind}`
-    );
-  });
-  next();
-});
 
-// ---------- Home + health ----------
+// --- simple home route ---
 app.get('/', (req, res) => res.send('SlimBuddy API running!'));
-app.get('/api/ping', (req, res) =>
-  res.json({ ok: true, message: 'SlimBuddy backend is alive!' })
-);
 
-// ---------- Spec basic-auth (SPEC_USER / SPEC_PASS) ----------
+
+// --- SAFE_MODE: optionally serve only ping/spec for debugging ---
+if (process.env.SAFE_MODE === '1') {
+  console.log('🔒 SAFE_MODE=1: Skipping all API mounts; serving ping + spec only.');
+} else {
+  // --- mount API routes ---
+  app.use('/api/ping', require('./api/ping.js'));
+  app.use('/api/auth_echo', require('./api/auth_echo.js'));
+  app.use('/api/env_check', require('./api/env_check.js'));
+
+
+  // Connect flow
+  app.use('/api/connect', require('./api/connect/verify.js'));
+
+
+  app.use('/api/log_meal', require('./api/log_meal.js'));
+  app.use('/api/log_weight', require('./api/log_weight.js'));
+  app.use('/api/log_exercise', require('./api/log_exercise.js'));
+  app.use('/api/log_measurements', require('./api/log_measurements.js'));
+  app.use('/api/user_goals', require('./api/user_goals.js'));
+  app.use('/api/update_user_settings', require('./api/update_user_settings.js'));
+  app.use('/api/update_food_value', require('./api/update_food_value.js'));
+  app.use('/api/weight_graph', require('./api/weight_graph.js'));
+  app.use('/api/user_profile', require('./api/user_profile.js'));
+}
+
+
+// --- Spec basic auth ---
 function specBasicAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Basic ')) {
@@ -77,44 +93,35 @@ function specBasicAuth(req, res, next) {
     return res.status(401).send('Authentication required');
   }
   const [user, pass] = Buffer.from(auth.split(' ')[1], 'base64')
-    .toString()
-    .split(':');
-  if (user === process.env.SPEC_USER && pass === process.env.SPEC_PASS) {
-    return next();
-  }
+    .toString().split(':');
+  if (user === process.env.SPEC_USER && pass === process.env.SPEC_PASS) return next();
   res.set('WWW-Authenticate', 'Basic realm="SlimBuddy Spec"');
   return res.status(401).send('Invalid credentials');
 }
 
-// Serve OpenAPI files
+
+// --- serve specs ---
 app.get('/spec/api-spec.yaml', specBasicAuth, (req, res) => {
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'api-spec.yaml'));
 });
-app.get('/spec/import.yaml', (req, res) => {
-  // If you use signed links, verify here; else serve directly
+
+
+app.get('/spec/import.yaml', specBasicAuth, (req, res) => {
   res.type('text/yaml');
   res.sendFile(path.join(__dirname, 'spec', 'import.yaml'));
 });
 
-// ---------- Mount API routes (flat files in /api) ----------
-app.use('/api/auth_echo', require('./api/auth_echo.js'));
 
-app.use('/api/log_meal', require('./api/log_meal.js'));
-app.use('/api/log_weight', require('./api/log_weight.js'));
-app.use('/api/log_exercise', require('./api/log_exercise.js'));
-app.use('/api/log_measurements', require('./api/log_measurements.js'));
-app.use('/api/user_goals', require('./api/user_goals.js'));
-app.use('/api/update_user_settings', require('./api/update_user_settings.js'));
-app.use('/api/update_food_value', require('./api/update_food_value.js'));
-app.use('/api/weight_graph', require('./api/weight_graph.js'));
-app.use('/api/user_profile', require('./api/user_profile.js'));
+
 
 // ---------- Connect endpoints (single file) ----------
 // api/connect.js should export a router that defines:
-//   POST /issue
 //   GET  /verify
+
+
 app.use('/api/connect', require('./api/connect.js'));
+
 
 // ---------- 404 + error handling ----------
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
@@ -122,6 +129,7 @@ app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
   res.status(500).json({ error: 'Unexpected server error' });
 });
+
 
 // ---------- Start ----------
 const PORT = process.env.PORT || 3000;
