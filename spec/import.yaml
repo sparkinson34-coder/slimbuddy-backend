@@ -1,9 +1,7 @@
 openapi: 3.1.0
 info:
-  title: SlimBuddy API (Connect-Key Auth)
+  title: SlimBuddy Import Spec (Minimal)
   version: 1.0.0
-  description: >
-    SlimBuddy API for GPT Actions. Authentication is a short connect key sent in header X-Connect-Key.
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
@@ -14,105 +12,6 @@ components:
       in: header
       name: X-Connect-Key
 
-  schemas:
-    BasicOK:
-      type: object
-      properties:
-        ok: { type: boolean }
-        message: { type: string }
-    WeightLogRequest:
-      type: object
-      required: [date, weight, unit]
-      properties:
-        date: { type: string, description: YYYY-MM-DD }
-        weight: { type: number }
-        unit: { type: string, enum: [kg, st_lbs, lb] }
-        notes: { type: string }
-    MealLogRequest:
-      type: object
-      required: [date, meal_description, syns]
-      properties:
-        date: { type: string, description: YYYY-MM-DD }
-        meal_description: { type: string }
-        syns: { type: number }
-        calories: { type: number }
-        healthy_extra_a_used: { type: boolean }
-        healthy_extra_b_used: { type: boolean }
-        notes: { type: string }
-    ExerciseLogRequest:
-      type: object
-      required: [date, activity]
-      properties:
-        date: { type: string, description: YYYY-MM-DD }
-        activity: { type: string }
-        duration_minutes: { type: integer }
-        intensity: { type: string }
-        calories_burned: { type: integer }
-        steps: { type: integer }
-        distance_km: { type: number }
-        notes: { type: string }
-    MeasurementsRequest:
-      type: object
-      required: [date]
-      properties:
-        date: { type: string, description: YYYY-MM-DD }
-        bust: { type: number }
-        waist: { type: number }
-        hips: { type: number }
-        thighs: { type: number }
-        neck: { type: number }
-        arm: { type: number }
-        under_bust: { type: number }
-        knees: { type: number }
-        ankles: { type: number }
-        notes: { type: string }
-    UserGoalRequest:
-      type: object
-      required: [goal_type, target_value, target_date]
-      properties:
-        goal_type: { type: string, enum: [weight_loss, maintain] }
-        target_value: { type: number, description: kg }
-        target_date: { type: string, description: YYYY-MM-DD }
-    UpdateUserSettingsRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        preferred_name: { type: string }
-        tone: { type: string }
-        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lb] }
-        diet_preference: { type: string }
-        food_allergies: { type: string }
-        food_dislikes: { type: string }
-        typical_day: { type: string }
-        healthy_extra_a: { type: string }
-        healthy_extra_b: { type: string }
-        syn_limit: { type: integer }
-        target_weight: { type: number, description: kg }
-        maintenance_mode_enabled: { type: boolean }
-    UpdateFoodValueRequest:
-      type: object
-      required: [food_name, syn_value]
-      properties:
-        food_name: { type: string }
-        syn_value: { type: number }
-        notes: { type: string }
-        date: { type: string, description: YYYY-MM-DD }
-    WeightGraphResponse:
-      type: object
-      properties:
-        user_id: { type: string }
-        data:
-          type: array
-          items:
-            type: object
-            properties:
-              date: { type: string }
-              weight: { type: number }
-    UserProfileResponse:
-      type: object
-      properties:
-        user_id: { type: string }
-
 security:
   - connectKeyAuth: []
 
@@ -120,30 +19,19 @@ paths:
   /api/ping:
     get:
       operationId: ping
-      summary: Health check
+      summary: Health check (no auth)
+      security: []         # make ping public so GPT can test connectivity quickly
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BasicOK" }
 
   /api/auth_echo:
     get:
       operationId: authEcho
-      summary: Echo back resolved user from X-Connect-Key
+      summary: Echo back resolved user (checks X-Connect-Key)
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  user:
-                    type: object
-                    additionalProperties: true
 
   /api/log_weight:
     post:
@@ -153,81 +41,143 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/WeightLogRequest" }
+            schema:
+              type: object
+              required: [date, weight]   # unit is optional; backend defaults to 'kg'
+              properties:
+                date:
+                  type: string
+                  description: YYYY-MM-DD
+                weight:
+                  type: number
+                unit:
+                  type: string
+                  description: Optional. One of kg, lb, st_lbs. Defaults to 'kg'.
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_meal:
     post:
       operationId: logMeal
-      summary: Log a meal
+      summary: Log a meal (date optional; defaults to today)
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/MealLogRequest" }
+            schema:
+              type: object
+              required: [meal_description, syns]
+              properties:
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
+                meal_description:
+                  type: string
+                syns:
+                  type: number
+                calories:
+                  type: number
+                healthy_extra_a_used:
+                  type: boolean
+                healthy_extra_b_used:
+                  type: boolean
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_exercise:
     post:
       operationId: logExercise
-      summary: Log an exercise entry
+      summary: Log exercise (date optional; defaults to today)
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ExerciseLogRequest" }
+            schema:
+              type: object
+              required: [activity]
+              properties:
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
+                activity:
+                  type: string
+                duration_minutes:
+                  type: integer
+                intensity:
+                  type: string
+                calories_burned:
+                  type: integer
+                steps:
+                  type: integer
+                distance_km:
+                  type: number
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_measurements:
     post:
       operationId: logMeasurements
-      summary: Log measurements
+      summary: Log body measurements (date optional; defaults to today)
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/MeasurementsRequest" }
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
+                bust: { type: number }
+                waist: { type: number }
+                hips: { type: number }
+                thighs: { type: number }
+                neck: { type: number }
+                arm: { type: number }
+                under_bust: { type: number }
+                knees: { type: number }
+                ankles: { type: number }
+                notes: { type: string }
       responses:
-        "200": { description: OK }
-
-  /api/user_goals:
-    post:
-      operationId: setUserGoal
-      summary: Create or update a user goal
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UserGoalRequest" }
-      responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/update_user_settings:
     patch:
       operationId: updateUserSettings
-      summary: Upsert user settings (only send changed fields)
+      summary: Upsert user settings (send only fields that changed)
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateUserSettingsRequest" }
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                preferred_name: { type: string }
+                tone: { type: string }
+                preferred_weight_unit: { type: string, description: "st_lbs | kg | lb" }
+                diet_preference: { type: string }
+                food_allergies: { type: string }
+                food_dislikes: { type: string }
+                typical_day: { type: string }
+                healthy_extra_a: { type: string }
+                healthy_extra_b: { type: string }
+                syn_limit: { type: integer }
+                target_weight: { type: number, description: "kg" }
+                maintenance_mode_enabled: { type: boolean }
       responses:
-        "200": { description: OK }
-
-  /api/update_food_value:
-    post:
-      operationId: updateFoodValue
-      summary: Add or correct a food Syn value
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateFoodValueRequest" }
-      responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/weight_graph:
     get:
@@ -236,14 +186,13 @@ paths:
       parameters:
         - in: query
           name: range
-          schema: { type: string, enum: [7d, 30d, 90d, 1y, all] }
           required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y, all]
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/WeightGraphResponse" }
 
   /api/user_profile:
     get:
@@ -252,6 +201,3 @@ paths:
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/UserProfileResponse" }

@@ -1,9 +1,10 @@
 openapi: 3.1.0
 info:
   title: SlimBuddy API (Connect-Key Auth)
-  version: 1.0.0
+  version: 1.0.1
   description: >
-    SlimBuddy API for GPT Actions. Authentication is a short connect key sent in header X-Connect-Key.
+    SlimBuddy API for GPT Actions.
+    Authentication uses a short Connect Key sent in the header: X-Connect-Key: SB-XXXX-XXX-X-XXXX.
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
@@ -20,30 +21,38 @@ components:
       properties:
         ok: { type: boolean }
         message: { type: string }
+
     WeightLogRequest:
       type: object
-      required: [date, weight, unit]
+      required: [date, weight]   # backend requires date & weight; unit is optional (defaults to 'kg')
       properties:
-        date: { type: string, description: YYYY-MM-DD }
+        date: { type: string, description: "YYYY-MM-DD" }
         weight: { type: number }
-        unit: { type: string, enum: [kg, st_lbs, lb] }
+        unit:
+          type: string
+          enum: [kg, st_lbs, lb]
+          description: Optional. Defaults to 'kg' if not provided.
         notes: { type: string }
+
     MealLogRequest:
       type: object
-      required: [date, meal_description, syns]
+      # date is optional — backend defaults to today if omitted
+      required: [meal_description, syns]
       properties:
-        date: { type: string, description: YYYY-MM-DD }
+        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
         meal_description: { type: string }
         syns: { type: number }
         calories: { type: number }
         healthy_extra_a_used: { type: boolean }
         healthy_extra_b_used: { type: boolean }
         notes: { type: string }
+
     ExerciseLogRequest:
       type: object
-      required: [date, activity]
+      # date is optional — backend defaults to today if omitted
+      required: [activity]
       properties:
-        date: { type: string, description: YYYY-MM-DD }
+        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
         activity: { type: string }
         duration_minutes: { type: integer }
         intensity: { type: string }
@@ -51,11 +60,12 @@ components:
         steps: { type: integer }
         distance_km: { type: number }
         notes: { type: string }
+
     MeasurementsRequest:
       type: object
-      required: [date]
+      # date is optional — backend defaults to today if omitted
       properties:
-        date: { type: string, description: YYYY-MM-DD }
+        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
         bust: { type: number }
         waist: { type: number }
         hips: { type: number }
@@ -66,13 +76,16 @@ components:
         knees: { type: number }
         ankles: { type: number }
         notes: { type: string }
+
     UserGoalRequest:
       type: object
-      required: [goal_type, target_value, target_date]
+      # target_date can be optional based on backend schema/usage
+      required: [goal_type, target_value]
       properties:
         goal_type: { type: string, enum: [weight_loss, maintain] }
-        target_value: { type: number, description: kg }
-        target_date: { type: string, description: YYYY-MM-DD }
+        target_value: { type: number, description: "Target in kg" }
+        target_date: { type: string, description: "YYYY-MM-DD (optional)" }
+
     UpdateUserSettingsRequest:
       type: object
       additionalProperties: false
@@ -87,8 +100,9 @@ components:
         healthy_extra_a: { type: string }
         healthy_extra_b: { type: string }
         syn_limit: { type: integer }
-        target_weight: { type: number, description: kg }
+        target_weight: { type: number, description: "kg" }
         maintenance_mode_enabled: { type: boolean }
+
     UpdateFoodValueRequest:
       type: object
       required: [food_name, syn_value]
@@ -96,7 +110,8 @@ components:
         food_name: { type: string }
         syn_value: { type: number }
         notes: { type: string }
-        date: { type: string, description: YYYY-MM-DD }
+        date: { type: string, description: "YYYY-MM-DD (optional)" }
+
     WeightGraphResponse:
       type: object
       properties:
@@ -108,6 +123,7 @@ components:
             properties:
               date: { type: string }
               weight: { type: number }
+
     UserProfileResponse:
       type: object
       properties:
@@ -120,7 +136,8 @@ paths:
   /api/ping:
     get:
       operationId: ping
-      summary: Health check
+      summary: Health check (no auth)
+      security: []   # override: make ping public
       responses:
         "200":
           description: OK
@@ -255,3 +272,4 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/UserProfileResponse" }
+
