@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: SlimBuddy Import Spec (Minimal)
-  version: 1.0.0
+  version: 1.1.0
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
@@ -20,7 +20,7 @@ paths:
     get:
       operationId: ping
       summary: Health check (no auth)
-      security: []         # make ping public so GPT can test connectivity quickly
+      security: []     # public for quick connectivity test
       responses:
         "200":
           description: OK
@@ -43,7 +43,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [date, weight]   # unit is optional; backend defaults to 'kg'
+              required: [date, weight]      # unit optional; defaults to 'kg'
               properties:
                 date:
                   type: string
@@ -151,6 +151,31 @@ paths:
         "200":
           description: OK
 
+  /api/user_goals:
+    post:
+      operationId: setUserGoal
+      summary: Create or update a user goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [goal_type, target_value]
+              properties:
+                goal_type:
+                  type: string
+                  enum: [weight_loss, maintain]
+                target_value:
+                  type: number
+                  description: Target in kg
+                target_date:
+                  type: string
+                  description: YYYY-MM-DD (optional)
+      responses:
+        "200":
+          description: OK
+
   /api/update_user_settings:
     patch:
       operationId: updateUserSettings
@@ -179,6 +204,28 @@ paths:
         "200":
           description: OK
 
+  /api/update_food_value:
+    post:
+      operationId: updateFoodValue
+      summary: Add or correct a food Syn value
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [food_name, syn_value]
+              properties:
+                food_name: { type: string }
+                syn_value: { type: number }
+                notes: { type: string }
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional)
+      responses:
+        "200":
+          description: OK
+
   /api/weight_graph:
     get:
       operationId: getWeightGraph
@@ -198,6 +245,25 @@ paths:
     get:
       operationId: getUserProfile
       summary: Get current user profile (user_id only)
+      responses:
+        "200":
+          description: OK
+
+  /api/reset:
+    post:
+      operationId: resetMyData
+      summary: Delete all of my SlimBuddy data (profile, goals, logs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm:
+                  type: string
+                  description: Must be "RESET"
       responses:
         "200":
           description: OK

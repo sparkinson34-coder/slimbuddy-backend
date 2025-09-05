@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: SlimBuddy API (Connect-Key Auth)
-  version: 1.0.1
+  title: SlimBuddy API (Full Spec)
+  version: 1.1.0
   description: >
-    SlimBuddy API for GPT Actions.
-    Authentication uses a short Connect Key sent in the header: X-Connect-Key: SB-XXXX-XXX-X-XXXX.
+    Public API for YourSlimBuddy. Authentication uses a short Connect Key
+    sent in the header `X-Connect-Key: SB-XXXX-XXX-X-XXXX`.
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
 
@@ -22,69 +22,102 @@ components:
         ok: { type: boolean }
         message: { type: string }
 
+    AuthEchoResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        user:
+          type: object
+          additionalProperties: true
+
     WeightLogRequest:
       type: object
-      required: [date, weight]   # backend requires date & weight; unit is optional (defaults to 'kg')
+      required: [date, weight]     # unit optional; backend defaults to 'kg'
       properties:
-        date: { type: string, description: "YYYY-MM-DD" }
-        weight: { type: number }
+        date:
+          type: string
+          description: YYYY-MM-DD
+        weight:
+          type: number
         unit:
           type: string
-          enum: [kg, st_lbs, lb]
-          description: Optional. Defaults to 'kg' if not provided.
-        notes: { type: string }
+          description: Optional. One of kg, lb, st_lbs. Defaults to 'kg'.
+          enum: [kg, lb, st_lbs]
+        notes:
+          type: string
 
     MealLogRequest:
       type: object
-      # date is optional — backend defaults to today if omitted
-      required: [meal_description, syns]
+      required: [meal_description, syns]   # date optional (defaults to today)
       properties:
-        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
-        meal_description: { type: string }
-        syns: { type: number }
-        calories: { type: number }
-        healthy_extra_a_used: { type: boolean }
-        healthy_extra_b_used: { type: boolean }
-        notes: { type: string }
+        date:
+          type: string
+          description: YYYY-MM-DD (optional; defaults to today)
+        meal_description:
+          type: string
+        syns:
+          type: number
+        calories:
+          type: number
+        healthy_extra_a_used:
+          type: boolean
+        healthy_extra_b_used:
+          type: boolean
+        notes:
+          type: string
 
     ExerciseLogRequest:
       type: object
-      # date is optional — backend defaults to today if omitted
-      required: [activity]
+      required: [activity]   # date optional (defaults to today)
       properties:
-        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
-        activity: { type: string }
-        duration_minutes: { type: integer }
-        intensity: { type: string }
-        calories_burned: { type: integer }
-        steps: { type: integer }
-        distance_km: { type: number }
-        notes: { type: string }
+        date:
+          type: string
+          description: YYYY-MM-DD (optional; defaults to today)
+        activity:
+          type: string
+        duration_minutes:
+          type: integer
+        intensity:
+          type: string
+        calories_burned:
+          type: integer
+        steps:
+          type: integer
+        distance_km:
+          type: number
+        notes:
+          type: string
 
     MeasurementsRequest:
       type: object
-      # date is optional — backend defaults to today if omitted
       properties:
-        date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
-        bust: { type: number }
-        waist: { type: number }
-        hips: { type: number }
-        thighs: { type: number }
-        neck: { type: number }
-        arm: { type: number }
-        under_bust: { type: number }
-        knees: { type: number }
-        ankles: { type: number }
-        notes: { type: string }
+        date:
+          type: string
+          description: YYYY-MM-DD (optional; defaults to today)
+        bust:        { type: number }
+        waist:       { type: number }
+        hips:        { type: number }
+        thighs:      { type: number }
+        neck:        { type: number }
+        arm:         { type: number }
+        under_bust:  { type: number }
+        knees:       { type: number }
+        ankles:      { type: number }
+        notes:       { type: string }
 
     UserGoalRequest:
       type: object
-      # target_date can be optional based on backend schema/usage
       required: [goal_type, target_value]
       properties:
-        goal_type: { type: string, enum: [weight_loss, maintain] }
-        target_value: { type: number, description: "Target in kg" }
-        target_date: { type: string, description: "YYYY-MM-DD (optional)" }
+        goal_type:
+          type: string
+          enum: [weight_loss, maintain]
+        target_value:
+          type: number
+          description: Target in kg
+        target_date:
+          type: string
+          description: YYYY-MM-DD (optional)
 
     UpdateUserSettingsRequest:
       type: object
@@ -92,7 +125,10 @@ components:
       properties:
         preferred_name: { type: string }
         tone: { type: string }
-        preferred_weight_unit: { type: string, enum: [st_lbs, kg, lb] }
+        preferred_weight_unit:
+          type: string
+          description: st_lbs | kg | lb
+          enum: [st_lbs, kg, lb]
         diet_preference: { type: string }
         food_allergies: { type: string }
         food_dislikes: { type: string }
@@ -100,7 +136,9 @@ components:
         healthy_extra_a: { type: string }
         healthy_extra_b: { type: string }
         syn_limit: { type: integer }
-        target_weight: { type: number, description: "kg" }
+        target_weight:
+          type: number
+          description: kg
         maintenance_mode_enabled: { type: boolean }
 
     UpdateFoodValueRequest:
@@ -110,7 +148,9 @@ components:
         food_name: { type: string }
         syn_value: { type: number }
         notes: { type: string }
-        date: { type: string, description: "YYYY-MM-DD (optional)" }
+        date:
+          type: string
+          description: YYYY-MM-DD (optional)
 
     WeightGraphResponse:
       type: object
@@ -121,13 +161,21 @@ components:
           items:
             type: object
             properties:
-              date: { type: string }
+              date:   { type: string }
               weight: { type: number }
 
     UserProfileResponse:
       type: object
       properties:
         user_id: { type: string }
+
+    ResetRequest:
+      type: object
+      required: [confirm]
+      properties:
+        confirm:
+          type: string
+          description: Must be "RESET"
 
 security:
   - connectKeyAuth: []
@@ -137,7 +185,7 @@ paths:
     get:
       operationId: ping
       summary: Health check (no auth)
-      security: []   # override: make ping public
+      security: []          # public
       responses:
         "200":
           description: OK
@@ -148,19 +196,13 @@ paths:
   /api/auth_echo:
     get:
       operationId: authEcho
-      summary: Echo back resolved user from X-Connect-Key
+      summary: Echo back resolved user from current Connect Key
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  user:
-                    type: object
-                    additionalProperties: true
+              schema: { $ref: "#/components/schemas/AuthEchoResponse" }
 
   /api/log_weight:
     post:
@@ -172,7 +214,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/WeightLogRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_meal:
     post:
@@ -184,7 +227,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/MealLogRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_exercise:
     post:
@@ -196,19 +240,21 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ExerciseLogRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/log_measurements:
     post:
       operationId: logMeasurements
-      summary: Log measurements
+      summary: Log body measurements
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/MeasurementsRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/user_goals:
     post:
@@ -220,19 +266,21 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/UserGoalRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/update_user_settings:
     patch:
       operationId: updateUserSettings
-      summary: Upsert user settings (only send changed fields)
+      summary: Upsert user settings (send only fields that changed)
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/UpdateUserSettingsRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/update_food_value:
     post:
@@ -244,7 +292,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/UpdateFoodValueRequest" }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
 
   /api/weight_graph:
     get:
@@ -253,8 +302,10 @@ paths:
       parameters:
         - in: query
           name: range
-          schema: { type: string, enum: [7d, 30d, 90d, 1y, all] }
           required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y, all]
       responses:
         "200":
           description: OK
@@ -272,4 +323,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/UserProfileResponse" }
+
+  /api/reset:
+    post:
+      operationId: resetMyData
+      summary: Delete all of my SlimBuddy data (profile, goals, and all logs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResetRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BasicOK" }
 

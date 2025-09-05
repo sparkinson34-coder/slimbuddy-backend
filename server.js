@@ -112,6 +112,7 @@ if (!SAFE_MODE) {
   app.use('/api/update_food_value', require('./api/update_food_value.js'));
   app.use('/api/weight_graph', require('./api/weight_graph.js'));
   app.use('/api/user_profile', require('./api/user_profile.js'));
+  app.use('/api/reset', require('./api/reset'));
 }
 
 // -------- 404 + error handlers --------
