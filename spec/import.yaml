@@ -1,9 +1,10 @@
 openapi: 3.1.0
 info:
-  title: SlimBuddy Import Spec (Minimal, Full Coverage)
-  version: 1.1.2
+  title: SlimBuddy Import Spec (Minimal)
+  version: 1.1.0
 servers:
   - url: https://slimbuddy-backend-production.up.railway.app
+
 
 components:
   securitySchemes:
@@ -12,24 +13,30 @@ components:
       in: header
       name: X-Connect-Key
 
+
 security:
   - connectKeyAuth: []
+
 
 paths:
   /api/ping:
     get:
       operationId: ping
       summary: Health check (no auth)
-      security: []   # public
+      security: []     # public for quick connectivity test
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/auth_echo:
     get:
       operationId: authEcho
       summary: Echo back resolved user (checks X-Connect-Key)
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/log_weight:
     post:
@@ -41,17 +48,22 @@ paths:
           application/json:
             schema:
               type: object
-              required: [date, weight]
+              required: [date, weight]      # unit optional; defaults to 'kg'
               properties:
-                date:   { type: string, description: "YYYY-MM-DD" }
-                weight: { type: number }
+                date:
+                  type: string
+                  description: YYYY-MM-DD
+                weight:
+                  type: number
                 unit:
                   type: string
-                  description: "Optional. One of kg, lb, st_lbs. Defaults to 'kg'."
-                  enum: [kg, lb, st_lbs]
-                notes:  { type: string }
+                  description: Optional. One of kg, lb, st_lbs. Defaults to 'kg'.
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/log_meal:
     post:
@@ -65,15 +77,25 @@ paths:
               type: object
               required: [meal_description, syns]
               properties:
-                date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
-                meal_description: { type: string }
-                syns: { type: number }
-                calories: { type: number }
-                healthy_extra_a_used: { type: boolean }
-                healthy_extra_b_used: { type: boolean }
-                notes: { type: string }
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
+                meal_description:
+                  type: string
+                syns:
+                  type: number
+                calories:
+                  type: number
+                healthy_extra_a_used:
+                  type: boolean
+                healthy_extra_b_used:
+                  type: boolean
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/log_exercise:
     post:
@@ -87,16 +109,27 @@ paths:
               type: object
               required: [activity]
               properties:
-                date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
-                activity: { type: string }
-                duration_minutes: { type: integer }
-                intensity: { type: string }
-                calories_burned: { type: integer }
-                steps: { type: integer }
-                distance_km: { type: number }
-                notes: { type: string }
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
+                activity:
+                  type: string
+                duration_minutes:
+                  type: integer
+                intensity:
+                  type: string
+                calories_burned:
+                  type: integer
+                steps:
+                  type: integer
+                distance_km:
+                  type: number
+                notes:
+                  type: string
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/log_measurements:
     post:
@@ -109,7 +142,9 @@ paths:
             schema:
               type: object
               properties:
-                date: { type: string, description: "YYYY-MM-DD (optional; defaults to today)" }
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional; defaults to today)
                 bust: { type: number }
                 waist: { type: number }
                 hips: { type: number }
@@ -121,7 +156,9 @@ paths:
                 ankles: { type: number }
                 notes: { type: string }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/user_goals:
     post:
@@ -140,12 +177,14 @@ paths:
                   enum: [weight_loss, maintain]
                 target_value:
                   type: number
-                  description: "Target in kg"
+                  description: Target in kg
                 target_date:
                   type: string
-                  description: "YYYY-MM-DD (optional)"
+                  description: YYYY-MM-DD (optional)
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/update_user_settings:
     patch:
@@ -161,10 +200,7 @@ paths:
               properties:
                 preferred_name: { type: string }
                 tone: { type: string }
-                preferred_weight_unit:
-                  type: string
-                  description: "st_lbs | kg | lb"
-                  enum: [st_lbs, kg, lb]
+                preferred_weight_unit: { type: string, description: "st_lbs | kg | lb" }
                 diet_preference: { type: string }
                 food_allergies: { type: string }
                 food_dislikes: { type: string }
@@ -175,7 +211,9 @@ paths:
                 target_weight: { type: number, description: "kg" }
                 maintenance_mode_enabled: { type: boolean }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/update_food_value:
     post:
@@ -192,9 +230,13 @@ paths:
                 food_name: { type: string }
                 syn_value: { type: number }
                 notes: { type: string }
-                date: { type: string, description: "YYYY-MM-DD (optional)" }
+                date:
+                  type: string
+                  description: YYYY-MM-DD (optional)
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/weight_graph:
     get:
@@ -208,14 +250,18 @@ paths:
             type: string
             enum: [7d, 30d, 90d, 1y, all]
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/user_profile:
     get:
       operationId: getUserProfile
       summary: Get current user profile (user_id only)
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+
 
   /api/reset:
     post:
@@ -231,6 +277,7 @@ paths:
               properties:
                 confirm:
                   type: string
-                  description: "Must be 'RESET'"
+                  description: Must be "RESET"
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
